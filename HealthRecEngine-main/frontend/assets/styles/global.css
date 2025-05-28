@@ -1,0 +1,22 @@
+/* Make sure Tailwind directives are at the top of the file */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Other custom styles */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
+}
+
+html,
+body {
+  @apply bg-white dark:bg-gray-950;
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: dark;
+  }
+}
+

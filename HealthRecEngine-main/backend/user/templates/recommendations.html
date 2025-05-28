@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Recommendations</title>
+    <style>
+        /* Basic styles */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7fa;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #007bff;
+        }
+
+        .card {
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 5px solid;
+            background-color: #f9f9f9;
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .card-text {
+            font-size: 1.2rem;
+            color: #555;
+        }
+
+        .progress {
+            margin-top: 20px;
+            background-color: #e0e0e0;
+            height: 30px;
+            border-radius: 5px;
+        }
+
+        .progress-bar {
+            line-height: 30px;
+            text-align: center;
+            font-size: 1rem;
+            color: white;
+            border-radius: 5px;
+        }
+
+        /* Specific color styling */
+        .card-steps {
+            border-left-color: #28a745;
+        }
+
+        .card-sleep {
+            border-left-color: #f39c12;
+        }
+
+        .card-heart-rate {
+            border-left-color: #e74c3c;
+        }
+
+        .card-weight {
+            border-left-color: #9b59b6;
+        }
+
+        .card-general {
+            border-left-color: #007bff;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Health Recommendations</h2>
+
+    <!-- General Health -->
+    <div class="card card-general">
+        <div class="card-body">
+            <h5 class="card-title">💡 General Health</h5>
+            <p class="card-text">{{ recommendations.general }}</p>
+        </div>
+    </div>
+
+    <!-- Steps -->
+    <div class="card card-steps">
+        <div class="card-body">
+            <h5 class="card-title">🚶‍♂️ Steps</h5>
+            <p class="card-text">{{ recommendations.steps }}</p>
+        </div>
+    </div>
+
+    <!-- Sleep -->
+    <div class="card card-sleep">
+        <div class="card-body">
+            <h5 class="card-title">😴 Sleep</h5>
+            <p class="card-text">{{ recommendations.sleep }}</p>
+        </div>
+    </div>
+
+    <!-- Heart Rate -->
+    <div class="card card-heart-rate">
+        <div class="card-body">
+            <h5 class="card-title">❤️ Heart Rate</h5>
+            <p class="card-text">{{ recommendations.heart_rate }}</p>
+        </div>
+    </div>
+
+    <!-- Weight -->
+    <div class="card card-weight">
+        <div class="card-body">
+            <h5 class="card-title">⚖️ Weight</h5>
+            <p class="card-text">{{ recommendations.weight }}</p>
+        </div>
+    </div>
+
+    <!-- Optional: Display progress bars if needed -->
+    <div class="progress">
+        <div class="progress-bar" role="progressbar" style="width: 70%" aria-valuenow="70" aria-valuemin="0" aria-valuemax="100">70%</div>
+    </div>
+</div>
+
+</body>
+</html>
