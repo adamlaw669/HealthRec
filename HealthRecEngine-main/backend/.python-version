@@ -1,0 +1,14 @@
+import requests
+
+# Replace with your actual Hugging Face API key
+API_KEY = "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"
+API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-large"
+HEADERS = {"Authorization": f"Bearer {API_KEY}"}
+
+def get_health_recommendation(prompt):
+    response = requests.post(API_URL, headers=HEADERS, json={"inputs": prompt})
+    return response.json()
+
+# Example Usage
+prompt = "Give health recommendations for someone with high blood pressure."
+print(get_health_recommendation(prompt))

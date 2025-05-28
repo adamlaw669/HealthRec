@@ -1,0 +1,106 @@
+{
+  "user": {
+    "id": "1",
+    "name": "Test User",
+    "email": "user@example.com",
+    "profilePicture": "/placeholder.svg?height=200&width=200"
+  },
+  "settings": {
+    "language": "en",
+    "darkMode": true,
+    "useMetricSystem": true,
+    "emailNotifications": true,
+    "healthAlerts": true,
+    "isActive": true,
+    "accountDeletionScheduled": null,
+    "googleFitConnected": false
+  },
+  "recommendations": {
+    "tips": [
+      "Try to maintain a consistent sleep schedule for optimal health.",
+      "Add 15 minutes of meditation to your daily routine.",
+      "Your step count is lower this week. Consider adding a short walk to your day.",
+      "Your heart rate variability has improved. Keep up your exercise routine!",
+      "Based on your sleep patterns, try going to bed 30 minutes earlier."
+    ],
+    "status": "success"
+  },
+  "metrics": {
+    "steps": {
+      "value": 7843,
+      "trend": "up",
+      "data": [6500, 7200, 8100, 7500, 7900, 8300, 7843]
+    },
+    "sleep": {
+      "value": 7.2,
+      "trend": "stable",
+      "data": [6.8, 7.1, 7.5, 6.9, 7.3, 7.0, 7.2]
+    },
+    "heartRate": {
+      "value": 72,
+      "trend": "down",
+      "data": [75, 76, 74, 73, 72, 72, 72]
+    },
+    "weight": {
+      "value": 70.5,
+      "trend": "stable",
+      "data": [71, 70.8, 70.7, 70.6, 70.5, 70.5, 70.5]
+    },
+    "calories": {
+      "value": 2100,
+      "trend": "stable",
+      "data": [2050, 2100, 2150, 2080, 2120, 2090, 2100]
+    },
+    "activeMinutes": {
+      "value": 45,
+      "trend": "up",
+      "data": [30, 35, 40, 35, 40, 42, 45]
+    }
+  },
+  "chartData": {
+    "steps": {
+      "labels": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+      "values": [6500, 7200, 8100, 7500, 7900, 8300, 7843]
+    },
+    "heart-rate": {
+      "labels": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+      "values": [75, 76, 74, 73, 72, 72, 72]
+    },
+    "sleep": {
+      "labels": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+      "values": [6.8, 7.1, 7.5, 6.9, 7.3, 7.0, 7.2]
+    },
+    "sleepBreakdown": {
+      "labels": ["Deep Sleep", "Light Sleep", "REM", "Awake"],
+      "values": [25, 45, 20, 10]
+    },
+    "activeMinutes": {
+      "labels": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+      "values": [30, 35, 40, 35, 40, 42, 45]
+    }
+  },
+  "faqs": [
+    {
+      "question": "How is my health data secured?",
+      "answer": "Your health data is encrypted both in transit and at rest. We use industry-standard security protocols to ensure your information remains private and secure."
+    },
+    {
+      "question": "Can I export my health data?",
+      "answer": "Yes, you can download your health data in various formats (JSON, CSV, PDF) from your Profile page."
+    }
+  ],
+  "weeklySummary": {
+    "summary": [
+      "You've increased your activity levels by 15% compared to last week!",
+      "Your sleep quality has improved with more consistent sleep times.",
+      "Your heart rate variability shows better recovery patterns."
+    ],
+    "trends": {
+      "steps": 15,
+      "sleep": 8,
+      "heart_rate": 5,
+      "active_minutes": 12
+    },
+    "status": "success"
+  }
+}
