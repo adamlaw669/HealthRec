@@ -32,7 +32,7 @@ const CaloriesMetric = () => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch("https://healthrec.onrender.com/health_data", {
+        const response = await fetch("http://127.0.0.1:8000/health_data", {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
