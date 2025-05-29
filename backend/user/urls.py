@@ -19,3 +19,5 @@ urlpatterns = [
     path('facts', views.HealthFacts, name='facts'),
     path('health_recommendations', views.health_recommendations, name='health_recommendations'),
     ]
+# add the logout function in the views and update here
+# add the get_csrf function in the views and update here

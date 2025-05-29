@@ -103,7 +103,7 @@ export const authAPI = {
     try {
       const csrfToken = await getCsrfToken(); // Ensure CSRF token is set
       const response = await apiClient.post(
-        "/api/auth/logout/",
+        "/logout",
         {},
         {
           headers: csrfToken ? { "X-CSRFToken": csrfToken } : undefined,
@@ -118,7 +118,7 @@ export const authAPI = {
   // Get current user profile
   getProfile: async () => {
     try {
-      const response = await apiClient.get("/api/user/profile/");
+      const response = await apiClient.get("/profile");
       return response.data;
     } catch (error: unknown) {
       throw handleError(error);
