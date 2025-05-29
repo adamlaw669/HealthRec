@@ -194,7 +194,7 @@ def signup_view(request):
                 'https://www.googleapis.com/auth/fitness.sleep.read',
                 'https://www.googleapis.com/auth/fitness.body.read'
             ],
-            redirect_uri='https://healthrec.netlify.app/dashboard'  # this must match Google Console!
+            redirect_uri='http://localhost:3000/dashboard'  # this must match Google Console!
         )
 
         flow.fetch_token(code=code)
