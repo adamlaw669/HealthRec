@@ -24,6 +24,7 @@ from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
+
 from .models import *
 from .serializers import *
 from .utils import *
@@ -377,7 +378,7 @@ def get_weekly_summary(request):
             "calories": 0
         })
     summary = {
-        "summary":"A summary of your health data"
+        "summary":"A summary of your health data",
         "steps": sum(d.steps for d in data),
         "sleep": round(sum(d.sleep for d in data), 1),
         "heart_rate": round(sum(d.heart_rate for d in data) / data.count(), 1),
