@@ -68,7 +68,7 @@ export default function Dashboard() {
   const [metricValue, setMetricValue] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   // const API_ENDPOINT = "http://127.0.0.1:8000"
-  const API_ENDPOINT = "https://healthrec.onrender.com"
+  const API_ENDPOINT = "http://127.0.0.1:8000"
   
   // Sleep breakdown data
   const [sleepBreakdownData, setSleepBreakdownData] = useState({

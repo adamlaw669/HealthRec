@@ -23,7 +23,7 @@ export default function AuthPage() {
   useEffect(() => {
     const token = localStorage.getItem("token")
     if (token) {
-      fetch("https://healthrec.onrender.com/verify", {
+      fetch("http://127.0.0.1:8000/verify", {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -59,8 +59,8 @@ export default function AuthPage() {
       }
       const endpoint =
         mode === "signup"
-          ? "https://healthrec.onrender.com/basic_signup"
-          : "https://healthrec.onrender.com/login"
+          ? "http://127.0.0.1:8000/basic_signup"
+          : "http://127.0.0.1:8000/login"
       // const endpoint = "http://127.0.0.1:8000/login"
       const payload = {
         username: formData.email,
