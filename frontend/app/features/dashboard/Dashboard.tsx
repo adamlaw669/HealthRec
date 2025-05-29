@@ -62,12 +62,22 @@ export default function Dashboard() {
       active_minutes: number;
     };
     status: string;
-  } | null>(null)
+  } | null>({
+    summary: ["No data available", "No data available", "No data available"],
+    trends: {
+      steps: 0,
+      sleep: 0,
+      heart_rate: 0,
+      weight: 0,
+      calories: 0,
+      active_minutes: 0
+    },
+    status: "loading"
+  })
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false)
   const [selectedMetric, setSelectedMetric] = useState<string | null>(null)
   const [metricValue, setMetricValue] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  // const API_ENDPOINT = "http://127.0.0.1:8000"
   const API_ENDPOINT = "http://127.0.0.1:8000"
   
   // Sleep breakdown data
@@ -107,17 +117,33 @@ export default function Dashboard() {
 
   // Initialize theme on component mount
   useEffect(() => {
-    const username = JSON.parse(localStorage.getItem("user")!)
-    setUsername(username.username)
-    console.log(username.username)
-    const initialDarkMode = getInitialTheme()
-    setDarkMode(initialDarkMode)
+    // Add safe user data retrieval
+    const userData = localStorage.getItem("user");
+    let username = "";
+    
+    if (userData) {
+      try {
+        const parsedUser = JSON.parse(userData);
+        username = parsedUser?.username || "Guest";
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+        username = "Guest";
+      }
+    } else {
+      username = "Guest";
+    }
+    
+    setUsername(username);
+    console.log("Current username:", username);
+
+    const initialDarkMode = getInitialTheme();
+    setDarkMode(initialDarkMode);
 
     // Apply theme to document
     if (initialDarkMode) {
-      document.documentElement.classList.add("dark")
+      document.documentElement.classList.add("dark");
     } else {
-      document.documentElement.classList.remove("dark")
+      document.documentElement.classList.remove("dark");
     }
   }, [])
 
@@ -234,17 +260,39 @@ export default function Dashboard() {
                 ],
               });
             } else {
-              setChartData(null);
+              setChartData({
+                labels: [],
+                datasets: [
+                  {
+                    label: "Steps",
+                    data: [],
+                    borderColor: "#1e3a8a",
+                    backgroundColor: "rgba(30, 58, 138, 0.2)",
+                    tension: 0.4,
+                  },
+                ],
+              });
             }
           }
         } catch (error) {
           console.error("Error fetching steps data:", error);
-          setChartData(null);
+          setChartData({
+            labels: [],
+            datasets: [
+              {
+                label: "Steps",
+                data: [],
+                borderColor: "#1e3a8a",
+                backgroundColor: "rgba(30, 58, 138, 0.2)",
+                tension: 0.4,
+              },
+            ],
+          });
         }
 
         // Fetch weekly activity data
         try {
-          const activityRes = fetch(`${API_ENDPOINT}/activity_data`, {
+          const activityRes = await fetch(`${API_ENDPOINT}/activity_data`, {
             method: "GET",
             credentials: "include",
             headers: {
@@ -315,13 +363,13 @@ export default function Dashboard() {
         // Fetch weekly summary
         try {
           const summaryRes = await fetch(`${API_ENDPOINT}/weekly_summary`, {
-            "method":"POST",
-            // credentials: "include",
-            "headers": {
+            method: "POST",
+            headers: {
               "Content-Type": "application/json"
             },
-            "body":JSON.stringify({username: username})
+            body: JSON.stringify({ username: username })
           });
+          
           if (summaryRes.ok) {
             const data = await summaryRes.json();
             setWeeklySummary(data);
@@ -341,7 +389,18 @@ export default function Dashboard() {
         ]);
         setIsAiOnline(false);
         setHealthFacts([]);
-        setChartData(null);
+        setChartData({
+          labels: [],
+          datasets: [
+            {
+              label: "Steps",
+              data: [],
+              borderColor: "#1e3a8a",
+              backgroundColor: "rgba(30, 58, 138, 0.2)",
+              tension: 0.4,
+            },
+          ],
+        });
         setWeeklySummary(null);
       } finally {
         setIsLoading(false);
@@ -698,31 +757,27 @@ export default function Dashboard() {
                       <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
                         <h3 className="font-medium text-gray-800 dark:text-white mb-2">Active minutes</h3>
                         <p className="text-gray-600 dark:text-gray-300">
-                          {weeklySummary[0] || "Analyzing your activity trends..."}
-                        </p>
-                      </div>
-                      {/* <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-                        <h3 className="font-medium text-gray-800 dark:text-white mb-2">Hours across week</h3>
-                        <p className="text-gray-600 dark:text-gray-300">
-                          {weeklySummary.summary[1] || "Analyzing your sleep patterns..."}
+                          {weeklySummary?.summary?.[0] || "Analyzing your activity trends..."}
                         </p>
                       </div>
                       <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-                        <h3 className="font-medium text-gray-800 dark:text-white mb-2">Average bpm</h3>
+                        <h3 className="font-medium text-gray-800 dark:text-white mb-2">Sleep Analysis</h3>
                         <p className="text-gray-600 dark:text-gray-300">
-                          {weeklySummary.summary[2] || "Analyzing your heart health..."}
+                          {weeklySummary?.summary?.[1] || "Analyzing your sleep patterns..."}
                         </p>
                       </div>
                       <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-                        <h3 className="font-medium text-gray-800 dark:text-white mb-2">Total calories </h3>
+                        <h3 className="font-medium text-gray-800 dark:text-white mb-2">Heart Health</h3>
                         <p className="text-gray-600 dark:text-gray-300">
-                          {weeklySummary.summary[2] || "Analyzing your heart health..."}
+                          {weeklySummary?.summary?.[2] || "Analyzing your heart health..."}
                         </p>
-                      </div> */}
+                      </div>
                     </>
                   ) : (
-                    <div className="col-span-3 text-center text-gray-600 dark:text-gray-400">
-                      Connect your Google Fit account to get personalized weekly summaries.
+                    <div className="col-span-3 text-center p-4">
+                      <p className="text-gray-600 dark:text-gray-400">
+                        Connect your health account to see your weekly summary.
+                      </p>
                     </div>
                   )}
                 </div>
