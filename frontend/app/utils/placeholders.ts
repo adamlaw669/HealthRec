@@ -7,13 +7,9 @@ export const getPlaceholderImage = (width: number, height: number, text = "") =>
 
 // Team member placeholder images
 export const teamPlaceholders = [
-  { name: "Adrien", role: "Frontend Lead", image: "/images/adrien.jpg" },
-  { name: "Adam", role: "Lead Data Engineer", image: "/images/adam.jpg" },
-  { name: "Emmanuel", role: "UI Engineer", image: "/images/emmanuel.jpg" },
-  { name: "Shukhriya", role: "Frontend developer", image:"/images/shukrah.jpg" },
-  { name: "Anjola", role: "Graphic Designer", image: "/images/anjola.jpg" },
-  { name: "Esther", role: "Backend Developer", image: "/images/esther.jpg" },
-  { name: "Daniel", role: "Backend Developer", image: getPlaceholderImage(200, 200, "Daniel") },
+  { name: "Adam Lawal", role: "Lead Data Engineer", image: "/images/adam.jpg" },
+  { name: "Ugoeze", role: "UI Engineer", image: "/images/emmanuel.jpg" },
+  { name: "Daniel Ibironke", role: "Backend Developer", image: getPlaceholderImage(200, 200, "Daniel") },
 ]
 
 // Favicon placeholder
