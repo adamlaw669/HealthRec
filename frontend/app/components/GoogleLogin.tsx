@@ -22,7 +22,7 @@ export default function GoogleLoginComponent() {
           if (response.code) {
             console.log('Auth Code:', response.code);
 
-            const res = await fetch('https://healthrec.onrender.com/signup', {
+            const res = await fetch('http://127.0.0.1:8000/signup', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ code: response.code }),
@@ -32,7 +32,7 @@ export default function GoogleLoginComponent() {
 
             if (res.ok) {
               localStorage.setItem('user', JSON.stringify(data.user));
-              window.location.href = 'https://healthrec.netlify.app/dashboard';
+              window.location.href = 'http://127.0.0.1:8000/dashboard';
 
             } else {
               alert(data.error || 'Something went wrong during login.');
