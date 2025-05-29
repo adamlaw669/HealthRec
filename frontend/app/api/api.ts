@@ -4,8 +4,8 @@
 import axios from "axios";
 
 // Development API URL
-//const DEV_API_URL = "http://127.0.0.1:8000" this is for Django connection
-const DEV_API_URL = "https://healthrec.onrender.com/"; // this is for the mock server
+const DEV_API_URL = "http://127.0.0.1:8000" // this is for Django connection
+// const DEV_API_URL = "https://healthrec.onrender.com/"; // this is for the mock server
 
 // Use environment variable in production, fallback to development URL
 const API_BASE_URL =
