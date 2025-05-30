@@ -129,7 +129,7 @@ export const authAPI = {
   updateProfile: async (profileData: any) => {
     try {
       const csrfToken = await getCsrfToken();
-      const response = await apiClient.put("/api/user/profile/", profileData, {
+      const response = await apiClient.put("/update_profile", profileData, {
         headers: csrfToken ? { "X-CSRFToken": csrfToken } : undefined,
       });
       return response.data;
@@ -143,7 +143,7 @@ export const authAPI = {
     try {
       const csrfToken = await getCsrfToken();
       const response = await apiClient.put(
-        "/api/user/settings/",
+        "/update_settings",
         settingsData,
         {
           headers: csrfToken ? { "X-CSRFToken": csrfToken } : undefined,
@@ -174,7 +174,7 @@ export const authAPI = {
   scheduleAccountDeletion: async (days: number) => {
     const csrfToken = await getCsrfToken();
     const response = await fetch(
-      `${API_BASE_URL}/api/user/settings/schedule-deletion/`,
+      `${API_BASE_URL}/account_deletion`,
       {
         method: "POST",
         headers: {
@@ -194,7 +194,7 @@ export const authAPI = {
   cancelAccountDeletion: async () => {
     const csrfToken = await getCsrfToken();
     const response = await fetch(
-      `${API_BASE_URL}/api/user/settings/cancel-deletion/`,
+      `${API_BASE_URL}/cancel_deletion`,
       {
         method: "POST",
         headers: {
@@ -212,7 +212,7 @@ export const authAPI = {
 
   googleLogin: async () => {
     try {
-      const response = await apiClient.get("/api/user/google/login/");
+      const response = await apiClient.get("/google_login");
       if (response.status === 200 && response.data.authUrl) {
         // Clear any existing auth tokens first
         localStorage.removeItem("token");
@@ -234,7 +234,7 @@ export const authAPI = {
   // Connect Google Fit
   connectGoogleFit: async () => {
     try {
-      const response = await apiClient.get("/api/user/google/login/");
+      const response = await apiClient.get("connect_google_fit");
       if (response.status === 200 && response.data.authUrl) {
         window.location.href = response.data.authUrl;
         return true;
@@ -251,7 +251,7 @@ export const authAPI = {
   // Check Google Fit connection status
   checkGoogleFitStatus: async () => {
     try {
-      const response = await apiClient.get("/api/user/google/status/");
+      const response = await apiClient.get("google_fit_status/");
       return response.data.connected;
     } catch (error) {
       console.error("Error checking Google Fit status:", error);
@@ -261,14 +261,14 @@ export const authAPI = {
 
   // Add status check endpoints
   checkOpenAIStatus: async () => {
-    const response = await apiClient.get("/api/openai/status/");
+    const response = await apiClient.get("/ai_status");
     return response.data;
   },
 
   // Verify token validity
   verifyToken: async (token: string) => {
     try {
-      const response = await apiClient.get("/api/auth/verify/", {
+      const response = await apiClient.get("/verify_token/", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -284,7 +284,7 @@ export const authAPI = {
 export const healthAPI = {
   getRecommendations: async () => {
     try {
-      const response = await apiClient.get("/api/health/recommendations");
+      const response = await apiClient.get("/get_recommendations");
       return {
         recommendations: response.data.recommendations,
         status: response.data.status,
@@ -302,7 +302,7 @@ export const healthAPI = {
   // Get health facts
   getHealthFacts: async () => {
     try {
-      const response = await apiClient.get("/api/health/facts");
+      const response = await apiClient.get("/get_facts");
       return response.data;
     } catch (error: unknown) {
       throw handleError(error);
@@ -312,7 +312,7 @@ export const healthAPI = {
   // Get latest metrics
   getLatestMetrics: async () => {
     try {
-      const response = await apiClient.get("/api/health/metrics/latest");
+      const response = await apiClient.get("/get_metrics");
       return response.data;
     } catch (error: unknown) {
       throw handleError(error);
@@ -323,7 +323,7 @@ export const healthAPI = {
   getChartData: async (metricType: string, timeRange = "week") => {
     try {
       const response = await apiClient.get(
-        `/api/health/metrics/${metricType}`,
+        `/metrics_chart/${metricType}`,
         {
           params: { timeRange },
         },
@@ -337,7 +337,7 @@ export const healthAPI = {
   // Get correlation insights between metrics
   getCorrelationInsights: async () => {
     try {
-      const response = await apiClient.get("/api/health/insights/correlations");
+      const response = await apiClient.get("/get_correlations");
       return response.data;
     } catch (error: unknown) {
       throw handleError(error);
@@ -353,7 +353,7 @@ export const healthAPI = {
     try {
       const csrfToken = await getCsrfToken();
       const response = await apiClient.post(
-        "/api/health/doctor-report",
+        "/get_doctor_report",
         { email, metrics, custom_notes: customNotes },
         {
           headers: csrfToken ? { "X-CSRFToken": csrfToken } : undefined,
@@ -368,7 +368,7 @@ export const healthAPI = {
   // Download health data
   downloadHealthData: async (format = "json") => {
     try {
-      const response = await apiClient.get("/api/health/download", {
+      const response = await apiClient.get("/download", {
         params: { format },
         responseType: "blob",
       });
@@ -379,7 +379,7 @@ export const healthAPI = {
   },
 
   getWeeklySummary: async () => {
-    const response = await apiClient.get("/api/weekly-summary/");
+    const response = await apiClient.get("/get_weekyly_summary");
     return response.data;
   },
 
@@ -388,7 +388,7 @@ export const healthAPI = {
     try {
       const csrfToken = await getCsrfToken();
       const response = await apiClient.post(
-        "/api/health/metrics/add",
+        "/add_metric",
         { metric_type: metricType, value },
         {
           headers: csrfToken ? { "X-CSRFToken": csrfToken } : undefined,
@@ -412,7 +412,7 @@ export const googleLogin = async (): Promise<void> => {
     console.log("Cleared existing auth tokens");
 
     // Request the Google authorization URL from the backend
-    const response = await apiClient.get("/api/user/google/login/");
+    const response = await apiClient.get("/googl_login");
     console.log("Google login response received:", response.status);
 
     if (response.status === 200 && response.data.authUrl) {
@@ -431,7 +431,7 @@ export const googleLogin = async (): Promise<void> => {
 // Updated path to include /api/
 export const checkGoogleStatus = async () => {
   try {
-    const response = await apiClient.get("/api/user/google/status/");
+    const response = await apiClient.get("/google_status");
     return response.data;
   } catch (error) {
     console.error("Error checking Google status:", error);
