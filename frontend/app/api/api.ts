@@ -412,7 +412,7 @@ export const googleLogin = async (): Promise<void> => {
     console.log("Cleared existing auth tokens");
 
     // Request the Google authorization URL from the backend
-    const response = await apiClient.get("/googl_login");
+    const response = await apiClient.get("/google_login");
     console.log("Google login response received:", response.status);
 
     if (response.status === 200 && response.data.authUrl) {
@@ -448,8 +448,8 @@ export const googleCallback = async (code: string): Promise<any> => {
 
   // Log the current base URL and paths we're going to try
   console.log("API base URL:", apiClient.defaults.baseURL);
-  const getUrl = `/api/user/google/callback/?code=${encodeURIComponent(code)}`;
-  const postUrl = "/api/user/google/callback/";
+  const getUrl = `/google_callback/?code=${encodeURIComponent(code)}`;
+  const postUrl = "/google_callback/";
   console.log("GET URL:", getUrl);
   console.log("POST URL:", postUrl);
 
@@ -561,7 +561,7 @@ export const supportAPI = {
   submitContactForm: async (formData: any) => {
     try {
       const csrfToken = await getCsrfToken();
-      const response = await apiClient.post("/api/support/contact", formData, {
+      const response = await apiClient.post("/support_contact", formData, {
         headers: csrfToken ? { "X-CSRFToken": csrfToken } : undefined,
       });
       return response.data;
@@ -572,7 +572,7 @@ export const supportAPI = {
 
   getFAQs: async () => {
     try {
-      const response = await apiClient.get("/api/support/faqs");
+      const response = await apiClient.get("/get_faqs");
       return response.data;
     } catch (error: unknown) {
       throw handleError(error);
