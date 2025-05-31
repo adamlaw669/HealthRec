@@ -32,3 +32,66 @@ class DailyHealthData(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.date} - {self.steps} steps  - {self.weight}weight" 
     
+
+class HealthMetricDefinition(models.Model):
+    METRIC_TYPES = [
+        ('blood_pressure', 'Blood Pressure'),
+        ('heart_rate', 'Heart Rate'),
+        ('blood_sugar', 'Blood Sugar'),
+        ('cholesterol', 'Cholesterol'),
+        ('body_temperature', 'Body Temperature'),
+        ('oxygen_saturation', 'Oxygen Saturation'),
+        ('respiratory_rate', 'Respiratory Rate'),
+    ]
+
+    UNITS = [
+        ('mmHg', 'mmHg'),
+        ('bpm', 'beats per minute'),
+        ('mg/dL', 'mg/dL'),
+        ('°C', 'Celsius'),
+        ('%', 'Percentage'),
+        ('breaths/min', 'breaths per minute'),
+    ]
+
+    metric_type = models.CharField(max_length=50, choices=METRIC_TYPES)
+    display_name = models.CharField(max_length=100)
+    unit = models.CharField(max_length=20, choices=UNITS)
+    min_value = models.FloatField()
+    max_value = models.FloatField()
+    description = models.TextField()
+    normal_range = models.CharField(max_length=100)  # e.g., "120/80 - 140/90" for BP
+
+    class Meta:
+        ordering = ['display_name']
+
+    def __str__(self):
+        return f"{self.display_name} ({self.unit})"
+
+    @staticmethod
+    def get_metric_ranges():
+        """Returns predefined ranges for each metric type"""
+        return {
+            'blood_pressure_systolic': {'min': 70, 'max': 200, 'unit': 'mmHg'},
+            'blood_pressure_diastolic': {'min': 40, 'max': 130, 'unit': 'mmHg'},
+            'heart_rate': {'min': 40, 'max': 200, 'unit': 'bpm'},
+            'blood_sugar_fasting': {'min': 50, 'max': 400, 'unit': 'mg/dL'},
+            'blood_sugar_post': {'min': 50, 'max': 500, 'unit': 'mg/dL'},
+            'cholesterol_total': {'min': 100, 'max': 400, 'unit': 'mg/dL'},
+            'body_temperature': {'min': 35, 'max': 42, 'unit': '°C'},
+            'oxygen_saturation': {'min': 50, 'max': 100, 'unit': '%'},
+            'respiratory_rate': {'min': 8, 'max': 40, 'unit': 'breaths/min'},
+        }
+
+class UserHealthMetric(models.Model):
+    """Stores user's health metric measurements"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    metric_type = models.ForeignKey(HealthMetricDefinition, on_delete=models.CASCADE)
+    value = models.JSONField()  # Stores value or values (e.g., both systolic and diastolic for BP)
+    measured_at = models.DateTimeField(auto_now_add=True)
+    notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['-measured_at']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.metric_type.display_name} - {self.measured_at}"

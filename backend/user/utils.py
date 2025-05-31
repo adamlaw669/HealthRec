@@ -477,6 +477,52 @@ def fetch_and_save_health_data(user, credentials):
                 "activity": activity,
                 "activity_minutes": activity_minutes,
                 "weight": weight,
+                
                 "calories": calories
             }
         )
+
+def fetch_fitbit_data(user, credentials):
+    """Fetches health data from Fitbit API"""
+    fitbit_service = build_fitbit_client(credentials)
+    
+    step_data = get_fitbit_steps(fitbit_service, user, days=7)
+    heart_data = get_fitbit_heart_rate(fitbit_service, user, days=7)
+    sleep_data = get_fitbit_sleep(fitbit_service, user, days=7)
+    activity_data = get_fitbit_activity(fitbit_service, user, days=7)
+    weight_data = get_fitbit_weight(fitbit_service, user, days=7)
+    calories_data = get_fitbit_calories(fitbit_service, user, days=7)
+
+    # Use the same data structure as Google Fit for consistency
+    for date_str, data in step_data.items():
+        date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+        
+        DailyHealthData.objects.update_or_create(
+            user=user,
+            date=date_obj,
+            defaults={
+                "steps": data.get('steps', 0),
+                "heart_rate": heart_data.get(date_str, {}).get('average', 0),
+                "sleep": sleep_data.get(date_str, {}).get('duration', 0),
+                "activity": activity_data.get(date_str, {}),
+                "weight": weight_data.get(date_str, {}).get('weight', 0),
+                "calories": calories_data.get(date_str, {}).get('calories', 0)
+            }
+        )
+
+def build_fitbit_client(credentials):
+    """Initialize Fitbit client with user credentials"""
+    # Implementation would depend on the Fitbit SDK/library you choose
+    pass
+
+def get_fitbit_steps(service, user, days=7):
+    """Fetch step data from Fitbit"""
+    # Implementation using Fitbit API
+    pass
+
+def get_fitbit_heart_rate(service, user, days=7):
+    """Fetch heart rate data from Fitbit"""
+    # Implementation using Fitbit API
+    pass
+
+# Add other Fitbit data fetching functions similarly...
