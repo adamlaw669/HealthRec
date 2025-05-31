@@ -57,7 +57,6 @@ def refresh_access_token(user):
 
 
 
-
 def get_step_data(service, user, days=7):
     # Use timezone-aware datetime
     end_time = datetime.now(timezone.utc)
