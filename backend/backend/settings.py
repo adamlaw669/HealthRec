@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 from dotenv import load_dotenv
+from decouple import config
 import os
 
 
@@ -36,13 +37,10 @@ ALLOWED_HOSTS = [
     'healthrec.netlify.app',  # Netlify frontend
 ]
 
+OPENAI_API_KEY = config("OPENAI_API_KEY")
 
-# OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
-# OPENAI_API_KEY = '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'
-
-# OPENAI_API_KEY = "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"
-AUTHENTICATION_BACKENDS = [
+_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
     # Any additional custom backends
 ]

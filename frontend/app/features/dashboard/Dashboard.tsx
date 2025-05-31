@@ -7,7 +7,7 @@ import { Line, Doughnut, Bar } from "react-chartjs-2"
 import { FaWalking, FaBed, FaHeartbeat, FaWeight, FaAppleAlt, FaRunning, FaMoon, FaSun, FaBrain, FaInfoCircle, FaPlus } from "react-icons/fa"
 import { useSidebar } from "../../context/SidebarContext"
 import "chart.js/auto"
-// import { healthAPI } from "../../api/api"
+import { healthAPI } from "../../api/api"
 import { getInitialTheme, toggleTheme } from "../../utils/theme-utils"
 import AIStatus from "../../components/AIStatus"
 
@@ -156,29 +156,35 @@ export default function Dashboard() {
     const fetchData = async () => {
       setIsLoading(true)
       try {
+        // Get username from localStorage
+        const userData = localStorage.getItem("user");
+        if (!userData) {
+          console.error("No user data found in localStorage");
+          return;
+        }
+
+        const { username } = JSON.parse(userData);
+        console.log("Fetching recommendations for username:", username);
+
         // Fetch AI recommendations
         try {
-          const recRes = await fetch(`${API_ENDPOINT}/recommendations`);
-          if (recRes.ok) {
-            const recData = await recRes.json();
-            if (recData && recData.general) {
-              setAiRecommendations(recData.general);
-              setIsAiOnline(recData.status === "success");
-            } else {
-              setAiRecommendations([
-                "Connect your Google Fit account to get personalized recommendations.",
-                "We'll analyze your health data to provide tailored insights.",
-                "Track your daily activities to receive AI-powered health advice.",
-                "Your data helps us understand your habits and suggest improvements.",
-                "Enable Google Fit sync for real-time health monitoring.",
-              ]);
-              setIsAiOnline(false);
-            }
+          const { recommendations, status } = await healthAPI.recommendations(username);
+        
+          if (recommendations?.general) {
+            setAiRecommendations(recommendations.general);
+            setIsAiOnline(status === 200 || String(status) === "success");
           } else {
-            throw new Error("Response not ok");
+            setAiRecommendations([
+              "Connect your Google Fit account to get personalized recommendations.",
+              "We'll analyze your health data to provide tailored insights.",
+              "Track your daily activities to receive AI-powered health advice.",
+              "Your data helps us understand your habits and suggest improvements.",
+              "Enable Google Fit sync for real-time health monitoring.",
+            ]);
+            setIsAiOnline(false);
           }
-        } catch (err) {
-          console.error("Failed to fetch AI recommendations:", err);
+        } catch (err: any) {
+          console.error("Failed to fetch AI recommendations:", err.message);
           setAiRecommendations([
             "Unable to fetch recommendations. Please check your Google Fit connection.",
             "Make sure you have granted all necessary permissions to access your health data.",
