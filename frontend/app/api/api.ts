@@ -54,10 +54,10 @@ export const getCsrfToken = async () => {
 
 // Authentication API
 export const authAPI = {
-  signup: async (username: string, password: string) => {
+  basic_signup: async (username: string, password: string) => {
     try {
       const csrfToken = await getCsrfToken(); 
-      const response = await fetch(`${API_BASE_URL}/basic_signup/`, {
+      const response = await fetch(`${API_BASE_URL}/basic_signup`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -158,7 +158,7 @@ export const authAPI = {
   // Get user settings
   getSettings: async () => {
     const csrfToken = await getCsrfToken();
-    const response = await fetch(`${API_BASE_URL}/api/user/settings/`, {
+    const response = await fetch(`${API_BASE_URL}/user_settings/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

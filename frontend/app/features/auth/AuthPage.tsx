@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
-//import { authAPI } from "../../api/api"
+import { authAPI } from "../../api/api"
 import "../../../assets/styles/auth-background.css"
 import GoogleLoginComponent from "../../components/GoogleLogin"
 //import APIConnectionTest from "../../components/APIConnectionTest"
@@ -54,33 +54,20 @@ export default function AuthPage() {
     setIsLoading(true)
   
     try {
-      if (mode === "signup" && formData.password !== formData.confirmPassword) {
-        throw new Error('Passwords do not match')
-      }
-      const endpoint =
-        mode === "signup"
-          ? "http://127.0.0.1:8000/basic_signup"
-          : "http://127.0.0.1:8000/login"
-      // const endpoint = "http://127.0.0.1:8000/login"
-      const payload = {
-        username: formData.email,
-        password: formData.password,
-      }
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      })  
-      const data = await response.json()
-      if (response.ok) {
+      if (mode === "signup") {
+        if (formData.password !== formData.confirmPassword) {
+          throw new Error("Passwords do not match")
+        }
+  
+        await authAPI.basic_signup(formData.email, formData.password)
         localStorage.setItem("user", JSON.stringify({ username: formData.email }))
         navigate("/dashboard")
       } else {
-        setError(data.error || "Authentication failed")
+        await authAPI.login(formData.email, formData.password)
+        localStorage.setItem("user", JSON.stringify({ username: formData.email }))
+        navigate("/dashboard")
       }
-    } catch (err:any) {
+    } catch (err: any) {
       console.error("Error:", err)
       setError(err.message || "Something went wrong")
     } finally {

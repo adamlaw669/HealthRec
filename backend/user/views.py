@@ -55,8 +55,6 @@ def save_json(request):
 
     user = request.user
     credentials = download_cred(user)
-    #user_cred = UserCredentials.objects.get(user=user)
-    #credentials.credentials_json = json.dumps(credentials.credentials_json)
     credentials.save()
     return HttpResponse("saved")
 
@@ -230,6 +228,25 @@ def basic_signup(request):
         if User.objects.filter(username=username).exists():
             return JsonResponse({'error': 'Username already exists'})
         user = User.objects.create_user(username=username, password=password)
+        today = now().date()
+        for i in range(7):
+            date = today - timedelta(days=i)
+            DailyHealthData.objects.update_or_create(
+                user=user,
+                date=date,
+                defaults={
+                    'steps': 3000 + (i * 500),  # increasing steps
+                    'heart_rate': 65 + (i % 3),  # slight HR variation
+                    'sleep': 6 + (i % 2),  # 6-7 hours
+                    'weight': 58 - (i * 0.2),  # slight weight drop
+                    'activity': {
+                        'walking': 40 + i * 2,
+                        'running': 15 + (i % 3) * 5,
+                        'cycling': 20 + (i % 2) * 10
+                    },
+                    'calories': 250 + i * 20
+                }
+            )
         if user is not None:
             login(request, user)
             return JsonResponse({"message": 'Signup succesful', 'csrfToken': csrf_token},status = 200)
