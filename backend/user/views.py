@@ -184,7 +184,7 @@ def signup_view(request):
         idinfo = id_token.verify_oauth2_token(credentials.id_token, google_requests.Request())
         email = idinfo['email']
         name = idinfo.get('name', '')
-        name_parts = name.split()
+        name_parts = name.split() #to split user's name into first and last name
         first_name = name_parts[0] if name_parts else ''
         last_name = name_parts[1] if len(name_parts) > 1 else ''
 
