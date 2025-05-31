@@ -17,7 +17,7 @@ urlpatterns = [
     path('csrf-cookie', views.get_csrf),
     path('last_data', views.fetch_last_day_health_data, name='last_data'),
     path('facts', views.HealthFacts, name='facts'),
-    path('health_recommendations', views.health_recommendations, name='health_recommendations'),
+#    path('recommendations', views.health_recommendations, name='recommendations'),
     ]
 # add the logout function in the views and update here
 # add the get_csrf function in the views and update here

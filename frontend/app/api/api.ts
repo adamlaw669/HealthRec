@@ -1,6 +1,3 @@
-
-
-
 import axios from "axios";
 
 // Development API URL
@@ -282,19 +279,19 @@ export const authAPI = {
 
 // Health Recommendations API
 export const healthAPI = {
-  getRecommendations: async () => {
+  recommendations: async (username: string) => {
     try {
-      const response = await apiClient.get("/get_recommendations");
+      const response = await apiClient.post("/recommendations", { username });
       return {
         recommendations: response.data.recommendations,
-        status: response.data.status,
+        status: response.status,
       };
     } catch (error: any) {
       if (error.response?.status === 401) {
         throw new Error("Please log in to get personalized recommendations");
       }
       throw new Error(
-        error.response?.data?.message || "Unable to generate recommendations",
+        error.response?.data?.message || "Unable to generate recommendations"
       );
     }
   },

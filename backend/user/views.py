@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import openai
 from datetime import timedelta
 
 from django.conf import settings
@@ -30,7 +31,7 @@ from .serializers import *
 from .utils import *
 logger = logging.getLogger(__name__)
 
-# openai.api_key = settings.OPENAI_API_KEY
+openai.api_key = settings.OPENAI_API_KEY
 genai.configure(api_key="AIzaSyCQh37XW3rvi6A37orv7zAs25gT2xcjIes")
 
 def index(request):
@@ -40,27 +41,38 @@ def index(request):
     return HttpResponse(f"hello: {user}, Welcome to HealthRecEngine")
 
 def save_json(request): 
-#     credentials = {
-#   "web": {
-#     "client_id": "544730488651-rsgigbm1dfciek9q0d9pkt4mbr11s1tr.apps.googleusercontent.com",
-#     "project_id": "healthrecengine",
-#     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-#     "token_uri": "https://oauth2.googleapis.com/token",
-#     "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-#     "client_secret": "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",
-#     "redirect_uris": [
-#       "http://localhost:8080/"
-#     ]
-# }
-
     user = request.user
     credentials = download_cred(user)
     credentials.save()
     return HttpResponse("saved")
 
-@api_view(["POST"])
-def get_health_recommendation(user):
+def get_openai_response(prompt):
     try:
+        response = openai.Completion.create(
+            model="o4-mini",
+            messages=[
+                {"role": "system", "content": "You are an AI health analyst."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=500
+        )
+        return response['choices'][0]['message']['content'].strip()
+    except Exception as e:
+        logger.error(f"OpenAI API error: {e}")
+        return "Unable to generate recommendation due to API error."
+
+@api_view(["POST"])
+#@permission_classes([IsAuthenticated])
+def get_health_recommendation(request):
+    try:
+        username = request.data.get("username")
+        if not username:
+            return Response({"error": "Username is required"}, status=400)
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
         last_7_days = now().date() - timedelta(days=7)
         health_data = DailyHealthData.objects.filter(user=user, date__gte=last_7_days).order_by('-date')
         if not health_data.exists(): 
@@ -88,27 +100,24 @@ def get_health_recommendation(user):
             "activity": f"Based on the following activity data:\n{data_str}\nProvide a brief recommendation on how the user can improve their activity levels.",
             "calories": f"Based on the following calories data:\n{data_str}\nProvide a brief recommendation on how the user can manage their calorie intake."
         }
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        def get_gemini_response(prompt):
-            try:
-                response = model.generate_content(prompt)
-                return response.text.strip() if response.text else "No response generated."
-            except Exception as api_error:
-                logger.error(f"Gemini API error: {api_error}")
-                return "Unable to generate recommendation due to API error."
-        recommendations = {key: get_gemini_response(prompt) for key, prompt in prompts.items()}
-        return recommendations
+        recommendations = {key: get_openai_response(prompt) for key, prompt in prompts.items()}
+        return Response({"recommendations": recommendations}, status=200)
     except Exception as e:
         logger.error(f"Error in get_health_recommendation: {e}")
-        return {
-            "general": "An error occurred while generating recommendations.",
-            "steps": "Error occurred.",
-            "sleep": "Error occurred.",
-            "heart_rate": "Error occurred.",
-            "weight": "Error occurred.",
-            "activity": "Error occurred.",
-            "calories": "Error occurred."
-        }
+        return Response({
+            "recommendations": {
+                "general": [
+                    "Something went wrong while generating your recommendations.",
+                    "Please try again later.",
+                    "Ensure your health data is synced.",
+                    "Contact support if the issue persists."
+                ]
+            },
+            "status": "error"
+        }, status=500)
+        
+
+    
 
 @api_view(["POST"])
 def HealthFacts(request):
@@ -141,34 +150,7 @@ def HealthFacts(request):
         logger.error(f"Error in get_health_recommendation: {e}")
         return {
             "general": "An error occurred while generating recommendations."
-        }
-
-
-
-
-
-@permission_classes([IsAuthenticated])
-def health_recommendations(request):
-    user = request.user  # Get the current logged-in user
-    recs = get_health_recommendation(user)
- 
-
-@api_view(["POST"])
-def health_recommendation_view(request):
-    data = request.data
-    user = User.objects.get(username=data['username'])
-    try:
-        # if not request.user.is_authenticated:
-        #     return JsonResponse({"error": "User not authenticated"}, status=401, safe=False)
-        # recommendation = get_health_recommendation(request.user)
-        recommendation = get_health_recommendation(user)
-        return JsonResponse({"recommendation": recommendation}, safe=False)
-    except Exception as e:
-        logger.error(f"Error in health_recommendation_view: {e}")
-        return JsonResponse({"error": "An unexpected error occurred"}, status=500, safe=False)
-    except User.DoesNotExist:
-        logger.error(f"Error in health_recommendation_view: {e}")
-        return JsonResponse({"error":"could not find the user"})
+        } 
     
     
 @api_view(["POST"])
