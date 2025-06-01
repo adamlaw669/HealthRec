@@ -171,25 +171,29 @@ const Metrics: React.FC = () => {
           const recommendations = await healthAPI.getHealthRecommendation();
           setIsAiOnline(true);
           
-          if (recommendations) {
+          if (recommendations?.recommendations) {
+            const { general, correlation, tips } = recommendations.recommendations;
+            
             // Handle general recommendations
-            if (recommendations.general) {
-              const general = recommendations.general;
+            if (general) {
               if (typeof general === 'object') {
-                if (general.insights) {
-                  setCorrelationInsights(Array.isArray(general.insights) ? general.insights : [general.insights]);
-                }
-                if (general.tips) {
-                  setAiTips(Array.isArray(general.tips) ? general.tips : [general.tips]);
-                }
+                setCorrelationInsights(general.insights || []);
+                setAiTips(general.tips || []);
               } else if (typeof general === 'string') {
                 setCorrelationInsights([general]);
               }
             }
             
-            // Handle tips if not already set
-            if (!aiTips.length && recommendations.tips) {
-              setAiTips(Array.isArray(recommendations.tips) ? recommendations.tips : [recommendations.tips]);
+            // Handle correlation insights if available
+            if (correlation) {
+              const correlationArray = Array.isArray(correlation) ? correlation : [correlation];
+              setCorrelationInsights(prev => [...prev, ...correlationArray]);
+            }
+            
+            // Handle tips if available
+            if (tips) {
+              const tipsArray = Array.isArray(tips) ? tips : [tips];
+              setAiTips(prev => [...prev, ...tipsArray]);
             }
           }
         } catch (err: any) {

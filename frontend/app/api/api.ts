@@ -17,14 +17,18 @@ const apiClient = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: true, // Enable sending cookies with requests
 });
 
-// Add request interceptor to add auth token
+// Add request interceptor to add auth token and CSRF token
 apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+  async (config) => {
+    // Get CSRF token from cookie
+    const cookies = document.cookie.split(';');
+    const csrfCookie = cookies.find(cookie => cookie.trim().startsWith('csrftoken='));
+    if (csrfCookie) {
+      const csrfToken = csrfCookie.split('=')[1];
+      config.headers['X-CSRFToken'] = csrfToken;
     }
     return config;
   },
@@ -39,7 +43,6 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Handle unauthorized access
-      localStorage.removeItem("token");
       localStorage.removeItem("user");
       window.location.href = "/login";
     }
@@ -110,6 +113,14 @@ export const authAPI = {
         throw new Error(response.data.error);
       }
 
+      // Store user data with correct structure
+      const userData = {
+        username: email,
+        name: email.split('@')[0], // Use part before @ as name
+        email: email
+      };
+      localStorage.setItem("user", JSON.stringify(userData));
+
       return response.data;
     } catch (error: unknown) {
       if (axios.isAxiosError(error) && error.response?.data?.error) {
@@ -130,10 +141,14 @@ export const authAPI = {
         },
       );
       
-      // Store user data and CSRF token
-      if (response.data.user) {
-        localStorage.setItem("user", JSON.stringify(response.data.user));
-      }
+      // Store user data with correct structure
+      const userData = {
+        username: username,
+        name: username.split('@')[0], // Use part before @ as name
+        email: username
+      };
+      localStorage.setItem("user", JSON.stringify(userData));
+      
       if (response.data.csrfToken) {
         apiClient.defaults.headers["X-CSRFToken"] = response.data.csrfToken;
       }
@@ -167,9 +182,12 @@ export const authAPI = {
       if (!userData) {
         throw new Error("No user data found in localStorage");
       }
-      const { username } = JSON.parse(userData);
+      const { username, name, email } = JSON.parse(userData);
       const response = await apiClient.get(`/profile?username=${username}`);
-      return response.data;
+      return {
+        name: name || response.data.name || username,
+        email: email || response.data.email || username
+      };
     } catch (error: unknown) {
       throw handleError(error);
     }
@@ -393,7 +411,12 @@ export const healthAPI = {
 
   getSleepData: async () => {
     try {
-      const response = await apiClient.get("/sleep_data");
+      const userData = localStorage.getItem("user");
+      if (!userData) {
+        throw new Error("No user data found in localStorage");
+      }
+      const { username } = JSON.parse(userData);
+      const response = await apiClient.get(`/sleep_data?username=${username}`);
       return response.data;
     } catch (error: unknown) {
       throw handleError(error);
@@ -429,7 +452,12 @@ export const healthAPI = {
 
   getActivityData: async () => {
     try {
-      const response = await apiClient.get("/activity_data");
+      const userData = localStorage.getItem("user");
+      if (!userData) {
+        throw new Error("No user data found in localStorage");
+      }
+      const { username } = JSON.parse(userData);
+      const response = await apiClient.get(`/activity_data?username=${username}`);
       return response.data;
     } catch (error: unknown) {
       throw handleError(error);

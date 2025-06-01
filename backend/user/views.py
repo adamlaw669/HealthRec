@@ -82,14 +82,11 @@ def get_health_recommendation(request):
                 "recommendations": {
                     "general": {
                         "summary": "No sufficient data available for recommendations.",
-                        "insights": ["Connect your health tracking devices to get personalized recommendations."]
+                        "insights": ["Connect your health tracking devices to get personalized recommendations."],
+                        "tips": ["Start tracking your daily activities to receive personalized insights."]
                     },
-                    "steps": "No data available.",
-                    "sleep": "No data available.",
-                    "heart_rate": "No data available.",
-                    "weight": "No data available.",
-                    "activity": "No data available.",
-                    "calories": "No data available."
+                    "correlation": ["Connect your devices to see correlations between different health metrics."],
+                    "tips": ["Enable Google Fit sync for real-time health monitoring."]
                 }
             })
             
@@ -100,13 +97,7 @@ def get_health_recommendation(request):
         prompts = {
             "general": f"Based on the following health data:\n{data_str}\nFirst provide a 2-3 sentence summary of the user's health status and main recommendations. Then provide 4 specific actionable insights as bullet points. Format the response with 'Summary:' and 'Insights:' sections.",
             "correlation": f"Based on the following health data:\n{data_str}\nProvide 4 lines of health correlation insights based on your health data patterns.",
-            "tips": f"Based on the following health data:\n{data_str}\nProvide 4 lines of Personalized tips based on the health metrics and patterns",
-            "steps": f"Based on the following step data:\n{data_str}\nProvide a brief recommendation on how the user can improve their physical activity.",
-            "sleep": f"Based on the following sleep data:\n{data_str}\nProvide a recommendation on how the user can improve their sleep quality.",
-            "heart_rate": f"Based on the following heart rate data:\n{data_str}\nProvide a recommendation on maintaining a healthy heart rate.",
-            "weight": f"Based on the following weight data:\n{data_str}\nProvide a brief recommendation on maintaining a healthy weight.",
-            "activity": f"Based on the following activity data:\n{data_str}\nProvide a brief recommendation on how the user can improve their activity levels.",
-            "calories": f"Based on the following calories data:\n{data_str}\nProvide a brief recommendation on how the user can manage their calorie intake."
+            "tips": f"Based on the following health data:\n{data_str}\nProvide 4 lines of Personalized tips based on the health metrics and patterns"
         }
         recommendations = {key: get_openai_response(prompt, username) for key, prompt in prompts.items()}
         
@@ -121,15 +112,25 @@ def get_health_recommendation(request):
                 
                 recommendations['general'] = {
                     "summary": summary_part,
-                    "insights": insights[:4]  # Ensure we only have 4 insights
+                    "insights": insights[:4],  # Ensure we only have 4 insights
+                    "tips": recommendations.get('tips', '').split('\n')[:4]  # Add tips from the tips prompt
                 }
             except Exception as e:
                 logger.error(f"Error processing general recommendations: {e}")
                 # Fallback if parsing fails
                 recommendations['general'] = {
                     "summary": "Here are your personalized health recommendations based on your recent data.",
-                    "insights": [line.strip() for line in general_text.split('\n') if line.strip()][:4]
+                    "insights": [line.strip() for line in general_text.split('\n') if line.strip()][:4],
+                    "tips": recommendations.get('tips', '').split('\n')[:4]
                 }
+        
+        # Process correlation insights
+        if isinstance(recommendations.get('correlation'), str):
+            recommendations['correlation'] = [line.strip() for line in recommendations['correlation'].split('\n') if line.strip()][:4]
+            
+        # Process tips
+        if isinstance(recommendations.get('tips'), str):
+            recommendations['tips'] = [line.strip() for line in recommendations['tips'].split('\n') if line.strip()][:4]
                 
         return Response({"recommendations": recommendations}, status=200)
     except Exception as e:
@@ -138,9 +139,11 @@ def get_health_recommendation(request):
             "recommendations": {
                 "general": {
                     "summary": "An error occurred while generating recommendations.",
-                    "insights": ["Please try again later."]
+                    "insights": ["Please try again later."],
+                    "tips": ["Check your connection and try again."]
                 },
-                "status": "error"
+                "correlation": ["Unable to generate correlation insights."],
+                "tips": ["Unable to generate personalized tips."]
             }
         }, status=500)
         
@@ -245,7 +248,7 @@ def explain_health_metrics(request):
             "details": str(e)
         }, status=500)
 
-
+    
 @api_view(["POST"])
 def signup_view(request):
     from google_auth_oauthlib.flow import Flow
@@ -391,7 +394,7 @@ def health_data_view(request):
                 "activity_minutes": 0,
                 "calories": 0
             } for i in range(7)])
-            
+        
         serializer = DailydataSerializer(data, many=True)
         return Response(serializer.data)
     except Exception as e:
@@ -546,31 +549,69 @@ def fetch_last_day_health_data(request):
     
 @api_view(["POST"])
 def get_weekly_summary(request):
-    username = request.data["username"]
-    print(username)
-    user = User.objects.get(username="Adam")
-    last_7_days = now().date() - timedelta(days=7)
-    data = DailyHealthData.objects.filter(user=user, date__gte=last_7_days)
+    try:
+        username = request.data.get("username")
+        if not username:
+            return Response({"error": "Username is required"}, status=400)
+            
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+            
+        last_7_days = now().date() - timedelta(days=7)
+        data = DailyHealthData.objects.filter(user=user, date__gte=last_7_days)
 
-    if not data.exists():
-        return JsonResponse({
-            "steps": 0,
-            "sleep": 0,
-            "heart_rate": 0,
-            "weight": 0,
-            "activity": 0,
-            "calories": 0
-        })
-    summary = {
-        "summary":"A summary of your health data",
-        "steps": sum(d.steps for d in data),
-        "sleep": round(sum(d.sleep for d in data), 1),
-        "heart_rate": round(sum(d.heart_rate for d in data) / data.count(), 1),
-        "weight": round(data.last().weight, 1),  # or average it if you prefer
-        "activity": sum(d.activity_minutes for d in data),
-        "calories": sum(d.calories for d in data)
-    }
-    return JsonResponse(summary)    
+        if not data.exists():
+            return Response({
+                "summary": ["No activity data available", "No sleep data available", "No heart rate data available"],
+                "trends": {
+                    "steps": 0,
+                    "sleep": 0,
+                    "heart_rate": 0,
+                    "weight": 0,
+                    "calories": 0,
+                    "active_minutes": 0
+                },
+                "status": "no_data"
+            })
+
+        # Calculate trends with proper type conversion
+        total_steps = sum(int(d.steps) if isinstance(d.steps, str) else d.steps for d in data)
+        avg_sleep = sum(float(d.sleep) if isinstance(d.sleep, str) else d.sleep for d in data) / data.count() if data.count() > 0 else 0
+        avg_heart_rate = sum(int(d.heart_rate) if isinstance(d.heart_rate, str) else d.heart_rate for d in data) / data.count() if data.count() > 0 else 0
+        total_active_minutes = sum(int(d.activity_minutes) if isinstance(d.activity_minutes, str) else d.activity_minutes for d in data)
+        total_calories = sum(int(d.calories) if isinstance(d.calories, str) else d.calories for d in data)
+        latest_weight = float(data.last().weight) if isinstance(data.last().weight, str) else data.last().weight if data.exists() else 0
+
+        # Generate summaries using OpenAI
+        activity_summary = get_openai_response(f'Give me a brief one-line summary of my activity levels this week. I have a total of {total_active_minutes} active minutes and {total_steps} steps.')
+        sleep_summary = get_openai_response(f'Give me a brief one-line summary of my sleep patterns this week. I averaged {round(avg_sleep, 1)} hours of sleep per night.')
+        heart_summary = get_openai_response(f'Give me a brief one-line summary of my heart health this week. My average heart rate was {round(avg_heart_rate, 1)} bpm.')
+
+        summary = {
+            "summary": [
+                activity_summary.strip(),
+                sleep_summary.strip(),
+                heart_summary.strip()
+            ],
+            "trends": {
+                "steps": total_steps,
+                "sleep": round(avg_sleep, 1),
+                "heart_rate": round(avg_heart_rate, 1),
+                "weight": round(latest_weight, 1),
+                "calories": round(total_calories, 1),
+                "active_minutes": total_active_minutes
+            },
+            "status": "success"
+        }
+        return Response(summary)
+    except Exception as e:
+        logger.error(f"Error in get_weekly_summary: {e}")
+        return Response({
+            "error": "An error occurred while generating weekly summary",
+            "details": str(e)
+        }, status=500)
     
 
 @csrf_exempt  # Disable CSRF for simplicity (enable in production)

@@ -31,9 +31,13 @@ export default function GoogleLoginComponent() {
             const data = await res.json();
 
             if (res.ok) {
-              localStorage.setItem('user', JSON.stringify(data.user));
+              const userData = {
+                username: data.user.username,
+                name: data.user.name || data.user.username.split('@')[0],
+                email: data.user.username
+              };
+              localStorage.setItem('user', JSON.stringify(userData));
               window.location.href = 'http://127.0.0.1:8000/dashboard';
-
             } else {
               alert(data.error || 'Something went wrong during login.');
             }

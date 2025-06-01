@@ -67,23 +67,12 @@ export default function Dashboard() {
       active_minutes: number;
     };
     status: string;
-  } | null>({
-    summary: ["No data available", "No data available", "No data available"],
-    trends: {
-      steps: 0,
-      sleep: 0,
-      heart_rate: 0,
-      weight: 0,
-      calories: 0,
-      active_minutes: 0
-    },
-    status: "loading"
-  })
+  } | null>(null)
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false)
   const [selectedMetric, setSelectedMetric] = useState<string | null>(null)
   const [metricValue, setMetricValue] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const API_ENDPOINT = "http://127.0.0.1:8000"
+  //const API_ENDPOINT = "http://127.0.0.1:8000"
   
   // Sleep breakdown data
   const [sleepBreakdownData, setSleepBreakdownData] = useState({
@@ -194,8 +183,8 @@ export default function Dashboard() {
         // Fetch health facts
         try {
           const factsData = await healthAPI.getHealthFacts();
-          if (factsData && factsData.facts) {
-            setHealthFacts(factsData.facts);
+            if (factsData && factsData.facts) {
+              setHealthFacts(factsData.facts);
           } else {
             setHealthFacts([]);
           }
@@ -222,19 +211,19 @@ export default function Dashboard() {
         // Fetch chart data for steps
         try {
           const stepsData = await healthAPI.getMetricsChart('steps');
-          if (stepsData && stepsData.labels && stepsData.values) {
-            setChartData({
-              labels: stepsData.labels,
-              datasets: [
-                {
-                  label: "Steps",
-                  data: stepsData.values,
-                  borderColor: "#1e3a8a",
-                  backgroundColor: "rgba(30, 58, 138, 0.2)",
-                  tension: 0.4,
-                },
-              ],
-            });
+            if (stepsData && stepsData.labels && stepsData.values) {
+              setChartData({
+                labels: stepsData.labels,
+                datasets: [
+                  {
+                    label: "Steps",
+                    data: stepsData.values,
+                    borderColor: "#1e3a8a",
+                    backgroundColor: "rgba(30, 58, 138, 0.2)",
+                    tension: 0.4,
+                  },
+                ],
+              });
           }
         } catch (error) {
           console.error("Error fetching steps data:", error);
@@ -243,17 +232,17 @@ export default function Dashboard() {
         // Fetch weekly activity data
         try {
           const activityData = await healthAPI.getActivityData();
-          if (activityData && activityData.labels && activityData.values) {
-            setWeeklyActivityData({
-              labels: activityData.labels,
-              datasets: [
-                {
-                  label: "Active Minutes",
-                  data: activityData.values,
-                  backgroundColor: "rgba(30, 58, 138, 0.6)",
-                },
-              ],
-            });
+            if (activityData && activityData.labels && activityData.values) {
+              setWeeklyActivityData({
+                labels: activityData.labels,
+                datasets: [
+                  {
+                    label: "Active Minutes",
+                    data: activityData.values,
+                    backgroundColor: "rgba(30, 58, 138, 0.6)",
+                  },
+                ],
+              });
           }
         } catch (error) {
           console.error("Error fetching activity data:", error);
@@ -263,36 +252,51 @@ export default function Dashboard() {
         try {
           const sleepData = await healthAPI.getSleepData();
           if (sleepData && sleepData.labels && sleepData.values) {
-            setSleepBreakdownData({
+              setSleepBreakdownData({
               labels: sleepData.labels,
-              datasets: [
-                {
+                datasets: [
+                  {
                   data: sleepData.values,
-                  backgroundColor: [
-                    "rgba(30, 58, 138, 0.6)",
-                    "rgba(59, 130, 246, 0.6)",
-                    "rgba(99, 102, 241, 0.6)",
-                    "rgba(139, 92, 246, 0.6)",
-                  ],
-                  borderColor: [
-                    "rgba(30, 58, 138, 1)",
-                    "rgba(59, 130, 246, 1)",
-                    "rgba(99, 102, 241, 1)",
-                    "rgba(139, 92, 246, 1)",
-                  ],
-                  borderWidth: 1,
-                },
-              ],
-            });
+                    backgroundColor: [
+                      "rgba(30, 58, 138, 0.6)",
+                      "rgba(59, 130, 246, 0.6)",
+                      "rgba(99, 102, 241, 0.6)",
+                      "rgba(139, 92, 246, 0.6)",
+                    ],
+                    borderColor: [
+                      "rgba(30, 58, 138, 1)",
+                      "rgba(59, 130, 246, 1)",
+                      "rgba(99, 102, 241, 1)",
+                      "rgba(139, 92, 246, 1)",
+                    ],
+                    borderWidth: 1,
+                  },
+                ],
+              });
           }
         } catch (error) {
           console.error("Error fetching sleep data:", error);
         }
-
+        
         // Fetch weekly summary
         try {
           const summaryData = await healthAPI.getWeeklySummary();
-          setWeeklySummary(summaryData);
+          if (summaryData && summaryData.summary) {
+            setWeeklySummary({
+              summary: summaryData.summary,
+              trends: summaryData.trends || {
+                steps: 0,
+                sleep: 0,
+                heart_rate: 0,
+                weight: 0,
+                calories: 0,
+                active_minutes: 0
+              },
+              status: summaryData.status || 'success'
+            });
+          } else {
+            setWeeklySummary(null);
+          }
         } catch (error) {
           console.error("Error fetching weekly summary:", error);
           setWeeklySummary(null);
@@ -663,26 +667,26 @@ export default function Dashboard() {
                     <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
                       <h3 className="font-medium text-gray-800 dark:text-white mb-2">Active minutes</h3>
                       <p className="text-gray-600 dark:text-gray-300">
-                        {weeklySummary?.summary?.[0] || "Analyzing your activity trends..."}
+                        {weeklySummary.summary[0] || "No activity data available"}
                       </p>
                     </div>
                     <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
                       <h3 className="font-medium text-gray-800 dark:text-white mb-2">Sleep Analysis</h3>
                       <p className="text-gray-600 dark:text-gray-300">
-                        {weeklySummary?.summary?.[1] || "Analyzing your sleep patterns..."}
+                        {weeklySummary.summary[1] || "No sleep data available"}
                       </p>
                     </div>
                     <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
                       <h3 className="font-medium text-gray-800 dark:text-white mb-2">Heart Health</h3>
                       <p className="text-gray-600 dark:text-gray-300">
-                        {weeklySummary?.summary?.[2] || "Analyzing your heart health..."}
+                        {weeklySummary.summary[2] || "No heart rate data available"}
                       </p>
                     </div>
                   </>
                 ) : (
                   <div className="col-span-3 text-center p-4">
                     <p className="text-gray-600 dark:text-gray-400">
-                      Connect your health account to see your weekly summary.
+                      {isLoading ? "Loading weekly summary..." : "No weekly summary data available. Please check your health data connections."}
                     </p>
                   </div>
                 )}
