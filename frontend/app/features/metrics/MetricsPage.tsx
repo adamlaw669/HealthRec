@@ -75,34 +75,23 @@ const Metrics: React.FC = () => {
   // Fetch metrics data
   useEffect(() => {
     const fetchMetricsData = async () => {
+      setIsLoading(true)
       try {
-        setIsLoading(true);
-        setError(null);
+        const [stepsData, heartRateData, sleepData, weightData, caloriesData, activityData] = await Promise.all([
+          healthAPI.getStepData(),
+          healthAPI.getHeartRateData(),
+          healthAPI.getSleepData(),
+          healthAPI.getWeightData(),
+          healthAPI.getCaloriesData(),
+          healthAPI.getActivityData()
+        ]);
 
-        // Get username from localStorage
-        const userData = localStorage.getItem("user");
-        if (!userData) {
-          throw new Error("Please log in to view your health metrics");
-        }
-        const { username } = JSON.parse(userData);
-
-        // Fetch health data using healthAPI
-        const healthDataResponse = await healthAPI.getHealthData();
-        const healthData = healthDataResponse.data;
-        
-        if (!healthData || healthData.length === 0) {
-          throw new Error("No health data available. Please add some metrics to see your data.");
-        }
-        
-        // Process health data for charts
-        const labels = healthData.map((entry: any) => new Date(entry.date).toLocaleDateString());
-        
         setMetricsData({
           steps: {
-            labels,
+            labels: stepsData.labels,
             datasets: [{
               label: "Steps",
-              data: healthData.map((entry: any) => entry.steps),
+              data: stepsData.values,
               fill: true,
               backgroundColor: 'rgba(30, 58, 138, 0.1)',
               borderColor: "#1e3a8a",
@@ -110,10 +99,10 @@ const Metrics: React.FC = () => {
             }]
           },
           heartRate: {
-            labels,
+            labels: heartRateData.labels,
             datasets: [{
               label: "Heart Rate",
-              data: healthData.map((entry: any) => entry.heart_rate),
+              data: heartRateData.values,
               fill: true,
               backgroundColor: 'rgba(239, 68, 68, 0.1)',
               borderColor: "#ef4444",
@@ -121,10 +110,10 @@ const Metrics: React.FC = () => {
             }]
           },
           sleep: {
-            labels,
+            labels: sleepData.labels,
             datasets: [{
               label: "Sleep",
-              data: healthData.map((entry: any) => entry.sleep),
+              data: sleepData.values,
               fill: true,
               backgroundColor: 'rgba(99, 102, 241, 0.1)',
               borderColor: "#6366f1",
@@ -132,10 +121,10 @@ const Metrics: React.FC = () => {
             }]
           },
           weight: {
-            labels,
+            labels: weightData.labels,
             datasets: [{
               label: "Weight",
-              data: healthData.map((entry: any) => entry.weight),
+              data: weightData.values,
               fill: true,
               backgroundColor: 'rgba(34, 197, 94, 0.1)',
               borderColor: "#22c55e",
@@ -143,10 +132,10 @@ const Metrics: React.FC = () => {
             }]
           },
           calories: {
-            labels,
+            labels: caloriesData.labels,
             datasets: [{
               label: "Calories",
-              data: healthData.map((entry: any) => entry.calories),
+              data: caloriesData.values,
               fill: true,
               backgroundColor: 'rgba(249, 115, 22, 0.1)',
               borderColor: "#f97316",
@@ -154,65 +143,37 @@ const Metrics: React.FC = () => {
             }]
           },
           activeMinutes: {
-            labels,
+            labels: activityData.labels,
             datasets: [{
               label: "Active Minutes",
-              data: healthData.map((entry: any) => entry.activity_minutes),
+              data: activityData.values,
               fill: true,
-              backgroundColor: 'rgba(20, 184, 166, 0.1)',
-              borderColor: "#14b8a6",
+              backgroundColor: 'rgba(168, 85, 247, 0.1)',
+              borderColor: "#a855f7",
               tension: 0.3,
             }]
           }
         });
 
-        // Fetch AI recommendations
-        try {
-          const recommendations = await healthAPI.getHealthRecommendation();
-          setIsAiOnline(true);
-          
-          if (recommendations?.recommendations) {
-            const { general, correlation, tips } = recommendations.recommendations;
-            
-            // Handle general recommendations
-            if (general) {
-              if (typeof general === 'object') {
-                setCorrelationInsights(general.insights || []);
-                setAiTips(general.tips || []);
-              } else if (typeof general === 'string') {
-                setCorrelationInsights([general]);
-              }
-            }
-            
-            // Handle correlation insights if available
-            if (correlation) {
-              const correlationArray = Array.isArray(correlation) ? correlation : [correlation];
-              setCorrelationInsights(prev => [...prev, ...correlationArray]);
-            }
-            
-            // Handle tips if available
-            if (tips) {
-              const tipsArray = Array.isArray(tips) ? tips : [tips];
-              setAiTips(prev => [...prev, ...tipsArray]);
-            }
-          }
-        } catch (err: any) {
-          console.error("Failed to fetch AI recommendations:", err.message);
-          setCorrelationInsights([]);
-          setAiTips([]);
-          setIsAiOnline(false);
-        }
+        // Fetch AI tips and correlation insights
+        const [tips, insights] = await Promise.all([
+          healthAPI.getHealthRecommendation(),
+          healthAPI.getHealthFacts()
+        ]);
 
-      } catch (err: any) {
-        console.error("Failed to fetch metrics data:", err);
-        setError(err.message || "Failed to load metrics data. Please try again later.");
+        setAiTips(tips.recommendations.general.insights);
+        setCorrelationInsights(tips.recommendations.correlation);
+
+      } catch (error) {
+        console.error("Error fetching metrics data:", error);
+        setError("Failed to load metrics data. Please try again later.");
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchMetricsData()
-  }, [timeRange])
+    fetchMetricsData();
+  }, [timeRange]);
 
   const chartOptions = {
     responsive: true,

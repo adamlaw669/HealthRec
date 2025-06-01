@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Line, Bar } from "react-chartjs-2"
 import Sidebar from "../../components/Sidebar"
 import { useSidebar } from "../../context/SidebarContext"
-//import { healthAPI } from "../../api/api"
+import { healthAPI } from "../../api/api"
 import { FaMoon, FaSun, FaArrowLeft, FaBrain, FaInfoCircle } from "react-icons/fa"
 import { getInitialTheme, toggleTheme } from "../../utils/theme-utils"
 import { useNavigate } from "react-router-dom"
@@ -31,18 +31,12 @@ const SleepMetric = () => {
     const fetchSleepData = async () => {
       setIsLoading(true)
       try {
-        const response = await fetch("http://127.0.0.1:8000/health_data", {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        })
-        const result = await response.json()
-        const validEntries = result.filter((entry: any) => entry.sleep != null)
-        const labels = validEntries.map((entry: any) => new Date(entry.date).toLocaleDateString())
-        const sleepValues = validEntries.map((entry: any) => entry.sleep)
+        const result = await healthAPI.getSleepData()
         setChartData({
-          labels,
+          labels: result.labels,
           datasets: [{
             label: "Sleep Hours",
-            data: sleepValues,
+            data: result.values,
             fill: false,
             borderColor: "#4CAF50",
             backgroundColor: "rgba(76, 175, 80, 0.1)",

@@ -451,60 +451,116 @@ def get_activity_data(request):
         return Response({"error": "An error occurred while fetching activity data."}, status=500)
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def get_heart_data(request):
+def get_step_data(request):
     try:
-        user = request.user
+        username = request.query_params.get('username')
+        if not username:
+            return Response({"error": "Username is required"}, status=400)
+            
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+            
         today = now().date()
         last_7_days = today - timedelta(days=6)
-        sleep_data = DailyHealthData.objects.filter(user=user, date__range=[last_7_days, today]).order_by('date')
+        step_data = DailyHealthData.objects.filter(user=user, date__range=[last_7_days, today]).order_by('date')
+        
         labels = []
         values = []
         for i in range(7):
             day = last_7_days + timedelta(days=i)
-            labels.append(day.strftime("%a"))  # "Mon", "Tue", etc.
-            day_data = sleep_data.filter(date=day).first()
-            values.append(day_data.heart_rate if day_data else 0)  # default to 0 if no data
+            labels.append(day.strftime("%a")) 
+            day_data = step_data.filter(date=day).first()
+            values.append(day_data.steps if day_data else 0) 
+            
+        return Response({"labels": labels, "values": values}, status=200)
+    except Exception as e:
+        logger.error(f"Error fetching steps data: {e}")
+        return Response({"error": "An error occurred while fetching steps data."}, status=500)
+
+@api_view(["GET"])
+def get_heart_data(request):
+    try:
+        username = request.query_params.get('username')
+        if not username:
+            return Response({"error": "Username is required"}, status=400)
+            
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+            
+        today = now().date()
+        last_7_days = today - timedelta(days=6)
+        heart_data = DailyHealthData.objects.filter(user=user, date__range=[last_7_days, today]).order_by('date')
+        
+        labels = []
+        values = []
+        for i in range(7):
+            day = last_7_days + timedelta(days=i)
+            labels.append(day.strftime("%a")) 
+            day_data = heart_data.filter(date=day).first()
+            values.append(day_data.heart_rate if day_data else 0) 
+            
         return Response({"labels": labels, "values": values}, status=200)
     except Exception as e:
         logger.error(f"Error fetching heart rate data: {e}")
         return Response({"error": "An error occurred while fetching heart rate data."}, status=500)
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
 def get_weight_data(request):
     try:
-        user = request.user
+        username = request.query_params.get('username')
+        if not username:
+            return Response({"error": "Username is required"}, status=400)
+            
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+            
         today = now().date()
         last_7_days = today - timedelta(days=6)
-        sleep_data = DailyHealthData.objects.filter(user=user, date__range=[last_7_days, today]).order_by('date')
+        weight_data = DailyHealthData.objects.filter(user=user, date__range=[last_7_days, today]).order_by('date')
+        
         labels = []
         values = []
         for i in range(7):
             day = last_7_days + timedelta(days=i)
-            labels.append(day.strftime("%a"))  # "Mon", "Tue", etc.
-            day_data = sleep_data.filter(date=day).first()
-            values.append(day_data.weight if day_data else 0)  # default to 0 if no data
+            labels.append(day.strftime("%a")) 
+            day_data = weight_data.filter(date=day).first()
+            values.append(day_data.weight if day_data else 0) 
+            
         return Response({"labels": labels, "values": values}, status=200)
     except Exception as e:
         logger.error(f"Error fetching weight data: {e}")
         return Response({"error": "An error occurred while fetching weight data."}, status=500)
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
 def get_calories_data(request):
     try:
-        user = request.user
+        username = request.query_params.get('username')
+        if not username:
+            return Response({"error": "Username is required"}, status=400)
+            
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+            
         today = now().date()
         last_7_days = today - timedelta(days=6)
-        sleep_data = DailyHealthData.objects.filter(user=user, date__range=[last_7_days, today]).order_by('date')
+        calories_data = DailyHealthData.objects.filter(user=user, date__range=[last_7_days, today]).order_by('date')
+        
         labels = []
         values = []
         for i in range(7):
             day = last_7_days + timedelta(days=i)
-            labels.append(day.strftime("%a"))  # "Mon", "Tue", etc.
-            day_data = sleep_data.filter(date=day).first()
-            values.append(day_data.calories if day_data else 0)  # default to 0 if no data
+            labels.append(day.strftime("%a")) 
+            day_data = calories_data.filter(date=day).first()
+            values.append(day_data.calories if day_data else 0) 
+            
         return Response({"labels": labels, "values": values}, status=200)
     except Exception as e:
         logger.error(f"Error fetching calories data: {e}")
