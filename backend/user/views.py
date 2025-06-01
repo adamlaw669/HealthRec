@@ -46,18 +46,18 @@ def save_json(request):
     credentials.save()
     return HttpResponse("saved")
 
-def get_openai_response(prompt):
+def get_openai_response(prompt, user = 'No username'):
     try:
-        response = openai.Completion.create(
-            model="o4-mini",
+        response = openai.chat.completions.create(
+            model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "You are an AI health analyst."},
+                {"role": "system", "content": f"You are a health and fitness expert translating health metrics and roles to English laymen can understand and interpret their own health metrics. The responses are shown to the user ({user}) on his/her app."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
-            max_tokens=500
+            max_completion_tokens=500
         )
-        return response['choices'][0]['message']['content'].strip()
+        return response.choices[0].message.content.strip()
     except Exception as e:
         logger.error(f"OpenAI API error: {e}")
         return "Unable to generate recommendation due to API error."
@@ -69,28 +69,36 @@ def get_health_recommendation(request):
         username = request.data.get("username")
         if not username:
             return Response({"error": "Username is required"}, status=400)
+            
         try:
             user = User.objects.get(username=username)
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=404)
+            
         last_7_days = now().date() - timedelta(days=7)
         health_data = DailyHealthData.objects.filter(user=user, date__gte=last_7_days).order_by('-date')
         if not health_data.exists(): 
-            return {
-                "general": "No sufficient data available for recommendations.",
-                "steps": "No data available.",
-                "sleep": "No data available.",
-                "heart_rate": "No data available.",
-                "weight": "No data available.",
-                "activity": "No data available.",
-                "calories": "No data available."
-            }
+            return Response({
+                "recommendations": {
+                    "general": {
+                        "summary": "No sufficient data available for recommendations.",
+                        "insights": ["Connect your health tracking devices to get personalized recommendations."]
+                    },
+                    "steps": "No data available.",
+                    "sleep": "No data available.",
+                    "heart_rate": "No data available.",
+                    "weight": "No data available.",
+                    "activity": "No data available.",
+                    "calories": "No data available."
+                }
+            })
+            
         data_str = "\n".join(
             f"Date: {entry.date}, Steps: {entry.steps}, HR: {entry.heart_rate}, Sleep: {entry.sleep}h, Weight: {entry.weight}kg, Activity: {entry.activity}, Calories: {entry.calories}"
             for entry in health_data
         )
         prompts = {
-            "general": f"Based on the following health data:\n{data_str}\nProvide 4 lines of general health recommendations and effective personalized tips.",
+            "general": f"Based on the following health data:\n{data_str}\nFirst provide a 2-3 sentence summary of the user's health status and main recommendations. Then provide 4 specific actionable insights as bullet points. Format the response with 'Summary:' and 'Insights:' sections.",
             "correlation": f"Based on the following health data:\n{data_str}\nProvide 4 lines of health correlation insights based on your health data patterns.",
             "tips": f"Based on the following health data:\n{data_str}\nProvide 4 lines of Personalized tips based on the health metrics and patterns",
             "steps": f"Based on the following step data:\n{data_str}\nProvide a brief recommendation on how the user can improve their physical activity.",
@@ -100,20 +108,40 @@ def get_health_recommendation(request):
             "activity": f"Based on the following activity data:\n{data_str}\nProvide a brief recommendation on how the user can improve their activity levels.",
             "calories": f"Based on the following calories data:\n{data_str}\nProvide a brief recommendation on how the user can manage their calorie intake."
         }
-        recommendations = {key: get_openai_response(prompt) for key, prompt in prompts.items()}
+        recommendations = {key: get_openai_response(prompt, username) for key, prompt in prompts.items()}
+        
+        # Process general recommendations to split into summary and insights
+        if isinstance(recommendations.get('general'), str):
+            general_text = recommendations['general']
+            try:
+                # Split into summary and insights sections
+                summary_part = general_text.split('Insights:')[0].replace('Summary:', '').strip()
+                insights_part = general_text.split('Insights:')[1].strip()
+                insights = [line.strip().replace('-', '').strip() for line in insights_part.split('\n') if line.strip()]
+                
+                recommendations['general'] = {
+                    "summary": summary_part,
+                    "insights": insights[:4]  # Ensure we only have 4 insights
+                }
+            except Exception as e:
+                logger.error(f"Error processing general recommendations: {e}")
+                # Fallback if parsing fails
+                recommendations['general'] = {
+                    "summary": "Here are your personalized health recommendations based on your recent data.",
+                    "insights": [line.strip() for line in general_text.split('\n') if line.strip()][:4]
+                }
+                
         return Response({"recommendations": recommendations}, status=200)
     except Exception as e:
         logger.error(f"Error in get_health_recommendation: {e}")
         return Response({
             "recommendations": {
-                "general": [
-                    "Something went wrong while generating your recommendations.",
-                    "Please try again later.",
-                    "Ensure your health data is synced.",
-                    "Contact support if the issue persists."
-                ]
-            },
-            "status": "error"
+                "general": {
+                    "summary": "An error occurred while generating recommendations.",
+                    "insights": ["Please try again later."]
+                },
+                "status": "error"
+            }
         }, status=500)
         
 
@@ -121,14 +149,23 @@ def get_health_recommendation(request):
 
 @api_view(["POST"])
 def HealthFacts(request):
-    user = request.data['username']    # credentials =  UserCredentials.objects.get(user=user) 
     try:
+        username = request.data.get('username')
+        if not username:
+            return Response({"error": "Username is required"}, status=400)
+            
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+            
         last_7_days = now().date() - timedelta(days=7)
         health_data = DailyHealthData.objects.filter(user=user, date__gte=last_7_days).order_by('-date')
         if not health_data.exists(): 
-            return {
-                "fact": "No sufficient data available for recommendations."
-            }
+            return Response({
+                "facts": ["No sufficient data available for recommendations."]
+            })
+            
         data_str = "\n".join(
             f"Date: {entry.date}, Steps: {entry.steps}, HR: {entry.heart_rate}, Sleep: {entry.sleep}h, Weight: {entry.weight}kg, Activity: {entry.activity}, Calories: {entry.calories}"
             for entry in health_data
@@ -144,15 +181,18 @@ def HealthFacts(request):
             except Exception as api_error:
                 logger.error(f"Gemini API error: {api_error}")
                 return "Unable to generate recommendation due to API error."
-        recommendations = {key: get_gemini_response(prompt) for key, prompt in prompts.items()}
-        return recommendations
+                
+        facts = get_gemini_response(prompts["facts"])
+        # Split facts into array and clean up
+        facts_array = [line.strip() for line in facts.split('\n') if line.strip()]
+        return Response({"facts": facts_array})
+        
     except Exception as e:
-        logger.error(f"Error in get_health_recommendation: {e}")
-        return {
-            "general": "An error occurred while generating recommendations."
-        } 
-    
-    
+        logger.error(f"Error in HealthFacts: {e}")
+        return Response({
+            "facts": ["An error occurred while generating health facts."]
+        }, status=500)
+
 @api_view(["POST"])
 def signup_view(request):
     from google_auth_oauthlib.flow import Flow
@@ -271,12 +311,26 @@ def get_csrf(request):
 
     
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])    
 def health_data_view(request):
-    user = request.user
-    data = DailyHealthData.objects.filter(user=user).order_by('date')
-    serializer = DailydataSerializer(data, many=True)
-    return Response(serializer.data)
+    try:
+        # Get username from query params
+        username = request.query_params.get('username')
+        if not username:
+            return Response({"error": "Username is required"}, status=400)
+            
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+            
+        # Get last 7 days of data
+        last_7_days = now().date() - timedelta(days=7)
+        data = DailyHealthData.objects.filter(user=user, date__gte=last_7_days).order_by('date')
+        serializer = DailydataSerializer(data, many=True)
+        return Response(serializer.data)
+    except Exception as e:
+        logger.error(f"Error in health_data_view: {e}")
+        return Response({"error": "An error occurred while fetching health data"}, status=500)
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -298,6 +352,69 @@ def get_activity_data(request):
         logger.error(f"Error fetching activity data: {e}")
         return Response({"error": "An error occurred while fetching activity data."}, status=500)
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_heart_data(request):
+    try:
+        user = request.user
+        today = now().date()
+        last_7_days = today - timedelta(days=6)
+        sleep_data = DailyHealthData.objects.filter(user=user, date__range=[last_7_days, today]).order_by('date')
+        labels = []
+        values = []
+        for i in range(7):
+            day = last_7_days + timedelta(days=i)
+            labels.append(day.strftime("%a"))  # "Mon", "Tue", etc.
+            day_data = sleep_data.filter(date=day).first()
+            values.append(day_data.heart_rate if day_data else 0)  # default to 0 if no data
+        return Response({"labels": labels, "values": values}, status=200)
+    except Exception as e:
+        logger.error(f"Error fetching heart rate data: {e}")
+        return Response({"error": "An error occurred while fetching heart rate data."}, status=500)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_weight_data(request):
+    try:
+        user = request.user
+        today = now().date()
+        last_7_days = today - timedelta(days=6)
+        sleep_data = DailyHealthData.objects.filter(user=user, date__range=[last_7_days, today]).order_by('date')
+        labels = []
+        values = []
+        for i in range(7):
+            day = last_7_days + timedelta(days=i)
+            labels.append(day.strftime("%a"))  # "Mon", "Tue", etc.
+            day_data = sleep_data.filter(date=day).first()
+            values.append(day_data.weight if day_data else 0)  # default to 0 if no data
+        return Response({"labels": labels, "values": values}, status=200)
+    except Exception as e:
+        logger.error(f"Error fetching weight data: {e}")
+        return Response({"error": "An error occurred while fetching weight data."}, status=500)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_calories_data(request):
+    try:
+        user = request.user
+        today = now().date()
+        last_7_days = today - timedelta(days=6)
+        sleep_data = DailyHealthData.objects.filter(user=user, date__range=[last_7_days, today]).order_by('date')
+        labels = []
+        values = []
+        for i in range(7):
+            day = last_7_days + timedelta(days=i)
+            labels.append(day.strftime("%a"))  # "Mon", "Tue", etc.
+            day_data = sleep_data.filter(date=day).first()
+            values.append(day_data.calories if day_data else 0)  # default to 0 if no data
+        return Response({"labels": labels, "values": values}, status=200)
+    except Exception as e:
+        logger.error(f"Error fetching calories data: {e}")
+        return Response({"error": "An error occurred while fetching calories data."}, status=500)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def get_sleep_data(request):
     try:
         user = request.user
@@ -317,7 +434,9 @@ def get_sleep_data(request):
         return Response({"error": "An error occurred while fetching sleep data."}, status=500)
 
 
+
 @api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def get_steps_data(request):
     try:
         user = request.user 

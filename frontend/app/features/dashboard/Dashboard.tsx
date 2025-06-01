@@ -15,13 +15,18 @@ import { HealthInterpreter } from "../../../components/ui/HealthInterpreter"
 export default function Dashboard() {
   const { isSidebarOpen } = useSidebar()
   const [darkMode, setDarkMode] = useState(false)
-  const [aiRecommendations, setAiRecommendations] =  useState<string[]>([
-    "Stay hydrated throughout the day.",
-    "Aim for at least 30 minutes of activity daily.",
-    "Try to sleep 7-8 hours every night.",
-    "Track your meals to monitor calorie intake.",
-    "Practice mindfulness for mental well-being.",
-  ])
+  const [aiRecommendations, setAiRecommendations] = useState<{
+    summary: string;
+    insights: string[];
+  }>({
+    summary: "Connect your health tracking devices to get personalized recommendations.",
+    insights: [
+      "We'll analyze your health data to provide tailored insights.",
+      "Track your daily activities to receive AI-powered health advice.",
+      "Your data helps us understand your habits and suggest improvements.",
+      "Enable Google Fit sync for real-time health monitoring.",
+    ]
+  })
   const [healthFacts, setHealthFacts] =useState<string[]>([
     "Walking boosts your immune function.",
     "Sleep helps regulate hormones.",
@@ -173,22 +178,28 @@ export default function Dashboard() {
             setAiRecommendations(recommendations.general);
             setIsAiOnline(status === 200 || String(status) === "success");
           } else {
-            setAiRecommendations([
-              "Connect your Google Fit account to get personalized recommendations.",
-              "We'll analyze your health data to provide tailored insights.",
-              "Track your daily activities to receive AI-powered health advice.",
-              "Your data helps us understand your habits and suggest improvements.",
-              "Enable Google Fit sync for real-time health monitoring.",
-            ]);
+            setAiRecommendations({
+              summary: "Connect your Google Fit account to get personalized recommendations.",
+              insights: [
+                "We'll analyze your health data to provide tailored insights.",
+                "Track your daily activities to receive AI-powered health advice.",
+                "Your data helps us understand your habits and suggest improvements.",
+                "Enable Google Fit sync for real-time health monitoring.",
+              ]
+            });
             setIsAiOnline(false);
           }
         } catch (err: any) {
           console.error("Failed to fetch AI recommendations:", err.message);
-          setAiRecommendations([
-            "Unable to fetch recommendations. Please check your Google Fit connection.",
-            "Make sure you have granted all necessary permissions to access your health data.",
-            "Try refreshing the page or reconnecting your Google Fit account.",
-          ]);
+          setAiRecommendations({
+            summary: "Unable to fetch recommendations. Please check your Google Fit connection.",
+            insights: [
+              "Make sure you have granted all necessary permissions to access your health data.",
+              "Try refreshing the page or reconnecting your Google Fit account.",
+              "Check your internet connection and try again.",
+              "Contact support if the issue persists.",
+            ]
+          });
           setIsAiOnline(false);
         }
 
@@ -387,11 +398,15 @@ export default function Dashboard() {
         }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
-        setAiRecommendations([
-          "Unable to fetch recommendations. Please check your Google Fit connection.",
-          "Make sure you have granted all necessary permissions to access your health data.",
-          "Try refreshing the page or reconnecting your Google Fit account.",
-        ]);
+        setAiRecommendations({
+          summary: "Unable to fetch recommendations. Please check your Google Fit connection.",
+          insights: [
+            "Make sure you have granted all necessary permissions to access your health data.",
+            "Try refreshing the page or reconnecting your Google Fit account.",
+            "Check your internet connection and try again.",
+            "Contact support if the issue persists.",
+          ]
+        });
         setIsAiOnline(false);
         setHealthFacts([]);
         setChartData({
@@ -520,13 +535,13 @@ export default function Dashboard() {
                 </div>
                 <AIStatus isOnline={isAiOnline} />
               </div>
-              {aiRecommendations.length > 0 && (
+              {aiRecommendations && (
                 <>
-                  <p className="text-lg mb-4">{aiRecommendations[0]}</p>
+                  <p className="text-lg mb-4">{aiRecommendations.summary}</p>
                   <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg">
                     <h3 className="font-semibold mb-2">Additional Insights:</h3>
                     <ul className="list-disc list-inside space-y-1">
-                      {aiRecommendations.slice(1).map((tip, index) => (
+                      {aiRecommendations.insights.map((tip, index) => (
                         <li key={index}>{tip}</li>
                       ))}
                     </ul>

@@ -26,6 +26,8 @@ import AIStatus from "../../components/AIStatus"
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
 
+const API_ENDPOINT = "http://127.0.0.1:8000"
+
 interface MetricsData {
   steps: ChartData<"line"> | null
   heartRate: ChartData<"line"> | null
@@ -72,33 +74,31 @@ const Metrics: React.FC = () => {
 
   // Fetch metrics data
   useEffect(() => {
-    interface HealthDataEntry {
-      date: string
-      steps: number
-      heart_rate: string
-      sleep: number
-      weight: number
-      calories: number
-      activity_minutes: number
-    }
-    
     const fetchMetricsData = async () => {
-      setIsLoading(true)
-      setError(null)
       try {
-        const response = await fetch("http://127.0.0.1:8000/health_data", {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`, // or however you're handling auth
-          },
-        })       
-        const result: HealthDataEntry[] = await response.json()
-        const labels = result.map((entry: HealthDataEntry) => new Date(entry.date).toLocaleDateString())
+        setIsLoading(true);
+        setError(null);
+
+        // Get username from localStorage
+        const userData = localStorage.getItem("user");
+        if (!userData) {
+          throw new Error("No user data found in localStorage");
+        }
+        const { username } = JSON.parse(userData);
+
+        // Fetch health data using healthAPI
+        const healthDataResponse = await healthAPI.getHealthData();
+        const healthData = healthDataResponse.data;
+        
+        // Process health data for charts
+        const labels = healthData.map((entry: any) => new Date(entry.date).toLocaleDateString());
+        
         setMetricsData({
           steps: {
             labels,
             datasets: [{
               label: "Steps",
-              data: result.map(entry => entry.steps),
+              data: healthData.map((entry: any) => entry.steps),
               fill: true,
               backgroundColor: 'rgba(30, 58, 138, 0.1)',
               borderColor: "#1e3a8a",
@@ -108,8 +108,8 @@ const Metrics: React.FC = () => {
           heartRate: {
             labels,
             datasets: [{
-              label: "Heart Rate (BPM)",
-              data:  result.map(entry => parseFloat(entry.heart_rate)),
+              label: "Heart Rate",
+              data: healthData.map((entry: any) => entry.heart_rate),
               fill: true,
               backgroundColor: 'rgba(239, 68, 68, 0.1)',
               borderColor: "#ef4444",
@@ -119,22 +119,22 @@ const Metrics: React.FC = () => {
           sleep: {
             labels,
             datasets: [{
-              label: "Sleep Hours",
-              data:  result.map(entry => entry.sleep),
+              label: "Sleep",
+              data: healthData.map((entry: any) => entry.sleep),
               fill: true,
-              backgroundColor: 'rgba(76, 175, 80, 0.1)',
-              borderColor: "#4CAF50",
+              backgroundColor: 'rgba(99, 102, 241, 0.1)',
+              borderColor: "#6366f1",
               tension: 0.3,
             }]
           },
           weight: {
             labels,
             datasets: [{
-              label: "Weight (kg)",
-              data: result.map(entry => entry.weight),
+              label: "Weight",
+              data: healthData.map((entry: any) => entry.weight),
               fill: true,
-              backgroundColor: 'rgba(99, 102, 241, 0.1)',
-              borderColor: "#6366f1",
+              backgroundColor: 'rgba(34, 197, 94, 0.1)',
+              borderColor: "#22c55e",
               tension: 0.3,
             }]
           },
@@ -142,7 +142,7 @@ const Metrics: React.FC = () => {
             labels,
             datasets: [{
               label: "Calories",
-              data: result.map(entry => entry.calories),
+              data: healthData.map((entry: any) => entry.calories),
               fill: true,
               backgroundColor: 'rgba(249, 115, 22, 0.1)',
               borderColor: "#f97316",
@@ -153,33 +153,45 @@ const Metrics: React.FC = () => {
             labels,
             datasets: [{
               label: "Active Minutes",
-              data:result.map(entry => entry.activity_minutes),
+              data: healthData.map((entry: any) => entry.activity_minutes),
               fill: true,
               backgroundColor: 'rgba(20, 184, 166, 0.1)',
               borderColor: "#14b8a6",
               tension: 0.3,
             }]
           }
-        })
-        const aiResponse = await fetch("http://127.0.0.1:8000/recommendations", {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
         });
-        
-        const aiData = await aiResponse.json();
-        // Simulate AI being online with realistic insights
-        setIsAiOnline(true)
-        setCorrelationInsights(aiData.correlation || []);
-        setAiTips(aiData.tips || []);
 
-      } catch (err) {
-        console.error("Failed to fetch metrics data:", err)
-        setError("Failed to load metrics data. Please try again later.")
+        // Fetch AI recommendations
+        try {
+          const { recommendations, status } = await healthAPI.recommendations(username);
+          setIsAiOnline(status === 200 || String(status) === "success");
+          
+          if (recommendations) {
+            setCorrelationInsights(recommendations.correlation ? 
+              (Array.isArray(recommendations.correlation) ? recommendations.correlation : [recommendations.correlation]) : 
+              []
+            );
+            
+            setAiTips(recommendations.tips ? 
+              (Array.isArray(recommendations.tips) ? recommendations.tips : [recommendations.tips]) : 
+              []
+            );
+          }
+        } catch (err: any) {
+          console.error("Failed to fetch AI recommendations:", err.message);
+          setCorrelationInsights([]);
+          setAiTips([]);
+          setIsAiOnline(false);
+        }
+
+      } catch (err: any) {
+        console.error("Failed to fetch metrics data:", err);
+        setError(err.message || "Failed to load metrics data. Please try again later.");
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
     fetchMetricsData()
   }, [timeRange])

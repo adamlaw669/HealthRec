@@ -10,31 +10,48 @@ const API_BASE_URL =
     ? import.meta.env.VITE_API_URL
     : DEV_API_URL;
 
-export const apiClient = axios.create({
+// Create axios instance with default config
+const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
-  // Include credentials to handle cookies for session-based auth
-  withCredentials: true, // Changed to true for CORS in development
 });
 
-// Utility function to handle errors
+// Add request interceptor to add auth token
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor to handle errors
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Handle unauthorized access
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Error handler
 const handleError = (error: unknown) => {
   if (axios.isAxiosError(error)) {
-    const errorMessage =
-      error.response?.data?.message ||
-      error.response?.data ||
-      "An error occurred";
-    console.error("API Error:", errorMessage);
-    return errorMessage;
-  } else if (error instanceof Error) {
-    console.error("Error:", error.message);
-    return error.message;
-  } else {
-    console.error("Unknown error:", error);
-    return "An unknown error occurred";
+    return error.response?.data?.message || error.message;
   }
+  return "An unexpected error occurred";
 };
 
 // Function to get CSRF token before making requests
@@ -281,12 +298,15 @@ export const authAPI = {
 export const healthAPI = {
   recommendations: async (username: string) => {
     try {
+      console.log("Sending recommendation request for username:", username);
       const response = await apiClient.post("/recommendations", { username });
+      console.log("Recommendation response:", response.data);
       return {
         recommendations: response.data.recommendations,
         status: response.status,
       };
     } catch (error: any) {
+      console.error("Recommendation API error:", error.response?.data || error);
       if (error.response?.status === 401) {
         throw new Error("Please log in to get personalized recommendations");
       }
@@ -296,10 +316,84 @@ export const healthAPI = {
     }
   },
 
+  // Get all health_data
+  getHealthData: async () => {
+    try {
+      const userData = localStorage.getItem("user");
+      if (!userData) {
+        throw new Error("No user data found in localStorage");
+      }
+      const { username } = JSON.parse(userData);
+      const response = await apiClient.get(`/health_data?username=${username}`);
+      return response;
+    } catch (error: unknown) {
+      throw handleError(error);
+    }
+  },
+
   // Get health facts
   getHealthFacts: async () => {
     try {
-      const response = await apiClient.get("/get_facts");
+      const userData = localStorage.getItem("user");
+      if (!userData) {
+        throw new Error("No user data found in localStorage");
+      }
+      const { username } = JSON.parse(userData);
+      const response = await apiClient.post("/facts", { username });
+      return response.data;
+    } catch (error: unknown) {
+      throw handleError(error);
+    }
+  },
+
+  getStepData: async () => {
+    try {
+      const response = await apiClient.get("/step_data");
+      return response.data;
+    } catch (error: unknown) {
+      throw handleError(error);
+    }
+  },
+
+  getSleepData: async () => {
+    try {
+      const response = await apiClient.get("/sleep_data");
+      return response.data;
+    } catch (error: unknown) {
+      throw handleError(error);
+    }
+  },
+
+  getHeartRateData: async () => {
+    try {
+      const response = await apiClient.get("/heart_data");
+      return response.data;
+    } catch (error: unknown) {
+      throw handleError(error);
+    }
+  },
+
+  getWeightData: async () => {
+    try {
+      const response = await apiClient.get("/weight_data");
+      return response.data;
+    } catch (error: unknown) {
+      throw handleError(error);
+    }
+  },
+
+  getCaloriesData: async () => {
+    try {
+      const response = await apiClient.get("/calories_data");
+      return response.data;
+    } catch (error: unknown) {
+      throw handleError(error);
+    }
+  },
+
+  getActivityData: async () => {
+    try {
+      const response = await apiClient.get("/activity_data");
       return response.data;
     } catch (error: unknown) {
       throw handleError(error);
@@ -325,16 +419,6 @@ export const healthAPI = {
           params: { timeRange },
         },
       );
-      return response.data;
-    } catch (error: unknown) {
-      throw handleError(error);
-    }
-  },
-
-  // Get correlation insights between metrics
-  getCorrelationInsights: async () => {
-    try {
-      const response = await apiClient.get("/get_correlations");
       return response.data;
     } catch (error: unknown) {
       throw handleError(error);
@@ -376,21 +460,32 @@ export const healthAPI = {
   },
 
   getWeeklySummary: async () => {
-    const response = await apiClient.get("/get_weekyly_summary");
-    return response.data;
+    try {
+      const userData = localStorage.getItem("user");
+      if (!userData) {
+        throw new Error("No user data found in localStorage");
+      }
+      const { username } = JSON.parse(userData);
+      const response = await apiClient.post("/weekly_summary", { username });
+      return response.data;
+    } catch (error: unknown) {
+      throw handleError(error);
+    }
   },
 
-  // Add new metric
-  addMetric: async (metricType: string, value: number) => {
+  // Add a new metric
+  addMetric: async (metric: string, value: number) => {
     try {
-      const csrfToken = await getCsrfToken();
-      const response = await apiClient.post(
-        "/add_metric",
-        { metric_type: metricType, value },
-        {
-          headers: csrfToken ? { "X-CSRFToken": csrfToken } : undefined,
-        },
-      );
+      const userData = localStorage.getItem("user");
+      if (!userData) {
+        throw new Error("No user data found in localStorage");
+      }
+      const { username } = JSON.parse(userData);
+      const response = await apiClient.post("/add_metric", {
+        username,
+        metric,
+        value,
+      });
       return response.data;
     } catch (error: unknown) {
       throw handleError(error);
