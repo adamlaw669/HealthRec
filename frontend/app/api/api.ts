@@ -1,4 +1,5 @@
 import axios from "axios";
+import { HealthInterpreter } from "components/ui/HealthInterpreter";
 
 // Development API URL
 const DEV_API_URL = "http://127.0.0.1:8000" // this is for Django connection
@@ -533,6 +534,15 @@ export const healthAPI = {
       return response.data;
     } catch (error: unknown) {
       throw handleError(error);
+    }
+  },
+
+  explainHealthMetrics: async (message: string) => {
+    try {
+      const response = await apiClient.post("/explain_health_metrics", { message });
+      return response.data; // Return the explanation and understood metrics
+    } catch (error: unknown) {
+      throw handleError(error); // Handle errors using the existing error handler
     }
   },
 };

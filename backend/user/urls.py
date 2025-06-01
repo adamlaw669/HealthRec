@@ -38,6 +38,7 @@ urlpatterns = [
     path('download_health_data', views.download_health_data, name='download_health_data'),
     path('check_openai_status', views.check_openai_status, name='check_openai_status'),
     path('add_metric', views.add_metric_view, name='add_metric'),
+    path('health_interpreter', views.explain_health_metrics, name='health_interpreter'),
     
     # Google integration
     path('google_login', views.google_login, name='google_login'),

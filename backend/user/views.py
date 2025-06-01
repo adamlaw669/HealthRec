@@ -173,16 +173,8 @@ def HealthFacts(request):
         prompts = {
             "facts": f"Based on the following health data:\n{data_str}\nProvide 7 lines of personalized health facts about the user's health(could be cool, simple and informative).",
         }
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        def get_gemini_response(prompt):
-            try:
-                response = model.generate_content(prompt)
-                return response.text.strip() if response.text else "No response generated."
-            except Exception as api_error:
-                logger.error(f"Gemini API error: {api_error}")
-                return "Unable to generate recommendation due to API error."
                 
-        facts = get_gemini_response(prompts["facts"])
+        facts = get_openai_response(prompts["facts"])
         # Split facts into array and clean up
         facts_array = [line.strip() for line in facts.split('\n') if line.strip()]
         return Response({"facts": facts_array})
@@ -192,6 +184,69 @@ def HealthFacts(request):
         return Response({
             "facts": ["An error occurred while generating health facts."]
         }, status=500)
+
+
+@api_view(["POST"])
+def explain_health_metrics(request):
+    try:
+        user_input = request.data.get('message', '')  # Get the user's natural language input
+        
+        # Common terms mapping to help identify metrics
+        common_terms = {
+            'sys': 'blood_pressure_systolic',
+            'systolic': 'blood_pressure_systolic',
+            'dia': 'blood_pressure_diastolic',
+            'diastolic': 'blood_pressure_diastolic',
+            'bp': 'blood_pressure',   
+            'hr': 'heart_rate',
+            'pulse': 'heart_rate',
+            'sugar': 'blood_sugar',
+            'glucose': 'blood_sugar',
+            'temp': 'body_temperature',
+            'temperature': 'body_temperature',
+            'oxygen': 'oxygen_saturation',
+            'o2': 'oxygen_saturation',
+            'spo2': 'oxygen_saturation',
+            'breathing': 'respiratory_rate',
+            'breath': 'respiratory_rate'
+        }
+
+        # Extract numbers and their context from user input
+        prompt = f"""As a friendly health advisor, I need help with the following:
+
+        User's input: "{user_input}"
+        Please provide:
+        1. Explain what each measurement or siunit means in simple terms (Very important)
+        2. Whether this/these number(s) is/are within normal range(s) (Very important)
+        3. What this/these number(s) suggest about their health
+        4. Simple lifestyle recommendations if needed
+        5. Clear advice on whether they should consult a healthcare provider
+        
+        Make the response conversational and easy to understand, as if you're explaining to a friend.
+        If any terms are medical or technical, please explain them in parentheses.
+
+        """
+
+        response = get_openai_response(prompt)
+        
+        explanation = response.text.strip() if response.text else "I couldn't understand your question. Please try rephrasing your question."
+
+        # Add a note about medical advice
+        disclaimer = ("\n\nPlease note: This is for informational purposes only and not a substitute for "
+                     "professional medical advice. Always consult with a healthcare provider for proper diagnosis and treatment.")
+
+        return Response({
+            "explanation": explanation + disclaimer,
+            "understood_metrics": common_terms  
+        })
+
+    except Exception as e:
+        logger.error(f"Error in explain_health_metrics: {e}")
+        return Response({
+            "error": "I couldn't process your question. Please try rephrasing it.",
+            "details": str(e)
+        }, status=500)
+
 
 @api_view(["POST"])
 def signup_view(request):
