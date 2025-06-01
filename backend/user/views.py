@@ -299,14 +299,20 @@ def signup_view(request):
 
 @api_view(["POST"])
 def basic_signup(request):
-    if request.method == "POST":
-        csrf_token = get_token(request)
+    try:
         username = request.data.get('username')
         password = request.data.get('password')
+        
+        if not username or not password:
+            return Response({"error": "Username and password are required"}, status=400)
+            
         if User.objects.filter(username=username).exists():
-            return JsonResponse({'error': 'Username already exists'})
+            return Response({"error": "Username already exists"}, status=400)
+            
         user = User.objects.create_user(username=username, password=password)
         today = now().date()
+        
+        # Create initial health data
         for i in range(7):
             date = today - timedelta(days=i)
             DailyHealthData.objects.update_or_create(
@@ -322,14 +328,25 @@ def basic_signup(request):
                         'running': 15 + (i % 3) * 5,
                         'cycling': 20 + (i % 2) * 10
                     },
+                    'activity_minutes': (40+i*2)+(15+(i%3)*5)+(20+(i%2)*10),
                     'calories': 250 + i * 20
                 }
             )
+            
         if user is not None:
             login(request, user)
-            return JsonResponse({"message": 'Signup succesful', 'csrfToken': csrf_token},status = 200)
-        return JsonResponse({"error": 'Signup failed'}, status = 400)
-    return JsonResponse({'error':'Invaid request method'}, status = 400)
+            return Response({
+                "message": "Signup successful",
+                "user": {
+                    "username": user.username,
+                    "email": user.email
+                }
+            }, status=200)
+            
+        return Response({"error": "Signup failed"}, status=400)
+    except Exception as e:
+        logger.error(f"Error in basic_signup: {e}")
+        return Response({"error": str(e)}, status=500)
     
 @api_view(["POST"])
 def login_view(request):
@@ -361,8 +378,13 @@ def verify_token(request):
 
 from django.views.decorators.csrf import ensure_csrf_cookie
 @ensure_csrf_cookie
-def get_csrf(request):
-    return JsonResponse({'detail': 'CSRF cookie set'})
+@api_view(['GET'])
+def csrf_cookie(request):
+    """Get CSRF cookie for frontend requests"""
+    csrf_token = get_token(request)
+    response = Response({'detail': 'CSRF cookie set', 'csrfToken': csrf_token})
+    response['X-CSRFToken'] = csrf_token
+    return response
     
 
     
@@ -373,28 +395,26 @@ def health_data_view(request):
         username = request.query_params.get('username')
         if not username:
             return Response({"error": "Username is required"}, status=400)
-            
         try:
             user = User.objects.get(username=username)
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=404)
-            
         # Get last 7 days of data
         last_7_days = now().date() - timedelta(days=7)
         data = DailyHealthData.objects.filter(user=user, date__gte=last_7_days).order_by('date')
-        
         if not data.exists():
             # Return empty data structure if no data exists
-            return Response([{
-                "date": (now().date() - timedelta(days=i)).isoformat(),
-                "steps": 0,
-                "heart_rate": 0,
-                "sleep": 0,
-                "weight": 0,
-                "activity_minutes": 0,
-                "calories": 0
-            } for i in range(7)])
-        
+            return Response([
+                {
+                    "date": (now().date() - timedelta(days=i)).isoformat(),
+                    "steps": 0,
+                    "heart_rate": 0,
+                    "sleep": 0,
+                    "weight": 0,
+                    "activity_minutes": 0,
+                    "calories": 0
+                } for i in range(7)
+            ])
         serializer = DailydataSerializer(data, many=True)
         return Response(serializer.data)
     except Exception as e:
@@ -402,13 +422,21 @@ def health_data_view(request):
         return Response({"error": "An error occurred while fetching health data"}, status=500)
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
 def get_activity_data(request):
     try:
-        user = request.user
+        username = request.query_params.get('username')
+        if not username:
+            return Response({"error": "Username is required"}, status=400)
+            
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+            
         today = now().date()
         last_7_days = today - timedelta(days=6)
         activity_data = DailyHealthData.objects.filter(user=user, date__range=[last_7_days, today]).order_by('date')
+        
         labels = []
         values = []
         for i in range(7):
@@ -416,6 +444,7 @@ def get_activity_data(request):
             labels.append(day.strftime("%a")) 
             day_data = activity_data.filter(date=day).first()
             values.append(day_data.activity_minutes if day_data else 0) 
+            
         return Response({"labels": labels, "values": values}, status=200)
     except Exception as e:
         logger.error(f"Error fetching activity data: {e}")
@@ -483,20 +512,29 @@ def get_calories_data(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
 def get_sleep_data(request):
     try:
-        user = request.user
+        username = request.query_params.get('username')
+        if not username:
+            return Response({"error": "Username is required"}, status=400)
+            
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+            
         today = now().date()
         last_7_days = today - timedelta(days=6)
         sleep_data = DailyHealthData.objects.filter(user=user, date__range=[last_7_days, today]).order_by('date')
+        
         labels = []
         values = []
         for i in range(7):
             day = last_7_days + timedelta(days=i)
-            labels.append(day.strftime("%a"))  # "Mon", "Tue", etc.
+            labels.append(day.strftime("%a")) 
             day_data = sleep_data.filter(date=day).first()
-            values.append(day_data.sleep if day_data else 0)  # default to 0 if no data
+            values.append(day_data.sleep if day_data else 0) 
+            
         return Response({"labels": labels, "values": values}, status=200)
     except Exception as e:
         logger.error(f"Error fetching sleep data: {e}")
@@ -505,13 +543,21 @@ def get_sleep_data(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
 def get_steps_data(request):
     try:
-        user = request.user 
+        username = request.query_params.get('username')
+        if not username:
+            return Response({"error": "Username is required"}, status=400)
+            
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+            
         today = now().date()
         last_7_days = today - timedelta(days=6)
         step_data = DailyHealthData.objects.filter(user=user, date__range=[last_7_days, today]).order_by('date')
+        
         labels = []
         values = []
         for i in range(7):
@@ -519,6 +565,7 @@ def get_steps_data(request):
             labels.append(day.strftime("%a")) 
             day_data = step_data.filter(date=day).first()
             values.append(day_data.steps if day_data else 0) 
+            
         return Response({"labels": labels, "values": values}, status=200)
     except Exception as e:
         logger.error(f"Error fetching steps data: {e}")
@@ -553,15 +600,12 @@ def get_weekly_summary(request):
         username = request.data.get("username")
         if not username:
             return Response({"error": "Username is required"}, status=400)
-            
         try:
             user = User.objects.get(username=username)
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=404)
-            
         last_7_days = now().date() - timedelta(days=7)
         data = DailyHealthData.objects.filter(user=user, date__gte=last_7_days)
-
         if not data.exists():
             return Response({
                 "summary": ["No activity data available", "No sleep data available", "No heart rate data available"],
@@ -575,7 +619,6 @@ def get_weekly_summary(request):
                 },
                 "status": "no_data"
             })
-
         # Calculate trends with proper type conversion
         total_steps = sum(int(d.steps) if isinstance(d.steps, str) else d.steps for d in data)
         avg_sleep = sum(float(d.sleep) if isinstance(d.sleep, str) else d.sleep for d in data) / data.count() if data.count() > 0 else 0
@@ -583,12 +626,10 @@ def get_weekly_summary(request):
         total_active_minutes = sum(int(d.activity_minutes) if isinstance(d.activity_minutes, str) else d.activity_minutes for d in data)
         total_calories = sum(int(d.calories) if isinstance(d.calories, str) else d.calories for d in data)
         latest_weight = float(data.last().weight) if isinstance(data.last().weight, str) else data.last().weight if data.exists() else 0
-
         # Generate summaries using OpenAI
         activity_summary = get_openai_response(f'Give me a brief one-line summary of my activity levels this week. I have a total of {total_active_minutes} active minutes and {total_steps} steps.')
         sleep_summary = get_openai_response(f'Give me a brief one-line summary of my sleep patterns this week. I averaged {round(avg_sleep, 1)} hours of sleep per night.')
         heart_summary = get_openai_response(f'Give me a brief one-line summary of my heart health this week. My average heart rate was {round(avg_heart_rate, 1)} bpm.')
-
         summary = {
             "summary": [
                 activity_summary.strip(),

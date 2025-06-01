@@ -81,7 +81,15 @@ export const getCsrfToken = async () => {
       return cookieToken;
     }
     
-    throw new Error("No CSRF token received");
+    // If still no token, try to get from response headers
+    const csrfHeader = response.headers['x-csrftoken'];
+    if (csrfHeader) {
+      apiClient.defaults.headers["X-CSRFToken"] = csrfHeader;
+      return csrfHeader;
+    }
+    
+    console.error("No CSRF token found in response or cookies");
+    return null;
   } catch (error) {
     console.error("Failed to get CSRF token:", error);
     return null;
@@ -99,7 +107,7 @@ export const authAPI = {
 
       const response = await apiClient.post(
         "/basic_signup",
-        { email, password },
+        { username: email, password },
         {
           headers: {
             "Content-Type": "application/json",
