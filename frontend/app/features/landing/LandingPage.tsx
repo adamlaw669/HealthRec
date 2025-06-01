@@ -369,12 +369,13 @@ export default function LandingPage() {
               <div key={index} className="px-4">
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 glass-card">
                   <img
-                    src={member.image || "/placeholder.svg"}
+                    src={member.image}
                     alt={`Team Member ${member.name}`}
                     className="w-24 h-24 rounded-full mx-auto mb-4 object-cover"
                   />
                   <h3 className="text-xl font-bold text-gray-800 dark:text-white">{member.name}</h3>
                   <p className="text-gray-600 dark:text-gray-300">{member.role}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{member.description}</p>
                 </div>
               </div>
             ))}

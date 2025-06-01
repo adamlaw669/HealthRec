@@ -4,10 +4,10 @@ from . import views
 urlpatterns = [
     # Authentication endpoints
     path('login', views.login_view, name='login'),
-    path('logout', views.logout_view, name='logout'),
+    #path('logout', views.logout_view, name='logout'),
     path('basic_signup', views.basic_signup, name='basic_signup'),
     path('verify_token', views.verify_token, name='verify_token'),
-    path('csrf-cookie', views.get_csrf_token, name='csrf-cookie'),
+    #path('csrf-cookie', views.get_csrf_token, name='csrf-cookie'),
     
     # Profile and settings endpoints
     path('profile', views.profile_view, name='profile'),

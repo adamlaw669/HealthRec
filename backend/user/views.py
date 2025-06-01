@@ -229,14 +229,12 @@ def explain_health_metrics(request):
 
         response = get_openai_response(prompt)
         
-        explanation = response.text.strip() if response.text else "I couldn't understand your question. Please try rephrasing your question."
-
         # Add a note about medical advice
         disclaimer = ("\n\nPlease note: This is for informational purposes only and not a substitute for "
                      "professional medical advice. Always consult with a healthcare provider for proper diagnosis and treatment.")
 
         return Response({
-            "explanation": explanation + disclaimer,
+            "explanation": response + disclaimer,
             "understood_metrics": common_terms  
         })
 

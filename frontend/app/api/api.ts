@@ -339,7 +339,7 @@ export const healthAPI = {
         throw new Error("No user data found in localStorage");
       }
       const { username } = JSON.parse(userData);
-      const response = await apiClient.get(`/get_health_recommendation?username=${username}`);
+      const response = await apiClient.post(`/get_health_recommendation`, { username });
       return response.data;
     } catch (error: any) {
       console.error("Recommendation API error:", error.response?.data || error);
@@ -537,12 +537,23 @@ export const healthAPI = {
     }
   },
 
-  explainHealthMetrics: async (message: string) => {
+  explainHealthMetric: async (message: string) => {
     try {
-      const response = await apiClient.post("/explain_health_metrics", { message });
-      return response.data; // Return the explanation and understood metrics
+      console.log('Making request to /health_interpreter with message:', message);
+      const response = await apiClient.post("/health_interpreter", { message });
+      console.log('Received response from /health_interpreter:', response.data);
+      return response.data;
     } catch (error: unknown) {
-      throw handleError(error); // Handle errors using the existing error handler
+      console.error('Error in explainHealthMetric:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('Axios error details:', {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          headers: error.response?.headers
+        });
+      }
+      throw handleError(error);
     }
   },
 };

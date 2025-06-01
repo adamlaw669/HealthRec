@@ -158,7 +158,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     const fetchData = async () => {
-      setIsLoading(true)
+      setIsLoading(true);
       try {
         // Get username from localStorage
         const userData = localStorage.getItem("user");
@@ -172,41 +172,18 @@ export default function Dashboard() {
 
         // Fetch AI recommendations
         try {
-          const { recommendations, status } = await healthAPI.recommendations(username);
-        
-          if (recommendations?.general) {
-            // Handle both string and array responses
-            const generalRecs = Array.isArray(recommendations.general) 
-              ? recommendations.general 
-              : recommendations.general.split('\n').filter((line: string) => line.trim());
-            
-            setAiRecommendations(generalRecs.length > 0 ? generalRecs : [
-              "Connect your Google Fit account to get personalized recommendations.",
-              "We'll analyze your health data to provide tailored insights.",
-              "Track your daily activities to receive AI-powered health advice.",
-              "Your data helps us understand your habits and suggest improvements.",
-              "Enable Google Fit sync for real-time health monitoring.",
-            ]);
-            setIsAiOnline(status === 200 || String(status) === "success");
-          } else {
-            setAiRecommendations({
-              summary: "Connect your Google Fit account to get personalized recommendations.",
-              insights: [
-                "We'll analyze your health data to provide tailored insights.",
-                "Track your daily activities to receive AI-powered health advice.",
-                "Your data helps us understand your habits and suggest improvements.",
-                "Enable Google Fit sync for real-time health monitoring.",
-              ]
-            });
-            setIsAiOnline(false);
+          const recommendations = await healthAPI.getHealthRecommendation();
+          if (recommendations?.recommendations?.general) {
+            setAiRecommendations(recommendations.recommendations.general);
+            setIsAiOnline(true);
           }
         } catch (err: any) {
           console.error("Failed to fetch AI recommendations:", err.message);
           setAiRecommendations({
-            summary: "Unable to fetch recommendations. Please check your Google Fit connection.",
+            summary: "Unable to fetch recommendations. Please check your connection.",
             insights: [
-              "Make sure you have granted all necessary permissions to access your health data.",
-              "Try refreshing the page or reconnecting your Google Fit account.",
+              "Make sure you have granted all necessary permissions.",
+              "Try refreshing the page.",
               "Check your internet connection and try again.",
               "Contact support if the issue persists.",
             ]
@@ -216,23 +193,10 @@ export default function Dashboard() {
 
         // Fetch health facts
         try {
-          const factsResponse = await fetch(`${API_ENDPOINT}/facts`, {
-            "method": "POST",
-            "headers": {
-              "Content-Type": "application/json",
-              //Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-            "body": JSON.stringify({ username }),
-          });
-          if (factsResponse.ok) {
-            const factsData = await factsResponse.json();
-            if (factsData && factsData.facts) {
-              setHealthFacts(factsData.facts);
-            } else {
-              setHealthFacts([]);
-            }
+          const factsData = await healthAPI.getHealthFacts();
+          if (factsData && factsData.facts) {
+            setHealthFacts(factsData.facts);
           } else {
-            console.error("Failed to fetch health facts");
             setHealthFacts([]);
           }
         } catch (error) {
@@ -242,107 +206,54 @@ export default function Dashboard() {
 
         // Fetch metrics data
         try {
-          const res = await fetch(`${API_ENDPOINT}/last_data`, {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            }
+          const metricsData = await healthAPI.getMetrics();
+          setMetrics({
+            steps: { value: metricsData.steps || 0, trend: "stable" },
+            sleep: { value: metricsData.sleep || 0, trend: "stable" },
+            heartRate: { value: metricsData.heart_rate || 0, trend: "stable" },
+            weight: { value: metricsData.weight || 0, trend: "stable" },
+            calories: { value: metricsData.calories || 0, trend: "stable" },
+            activeMinutes: { value: metricsData.activity_minutes || 0, trend: "stable" },
           });
-          if (res.ok) {
-            const metricsData = await res.json();
-            setMetrics({
-              steps: { value: metricsData.steps || 0, trend: metricsData.steps_trend || "stable" },
-              sleep: { value: metricsData.sleep || 0, trend: metricsData.sleep_trend || "stable" },
-              heartRate: { value: metricsData.heart_rate || 0, trend: metricsData.heart_rate_trend || "stable" },
-              weight: { value: metricsData.weight || 0, trend: metricsData.weight_trend || "stable" },
-              calories: { value: metricsData.calories || 0, trend: metricsData.calories_trend || "stable" },
-              activeMinutes: { value: metricsData.active_minutes || 0, trend: metricsData.active_minutes_trend || "stable" },
-            });
-          }
         } catch (error) {
           console.error("Error fetching metrics data:", error);
         }
 
         // Fetch chart data for steps
         try {
-          const stepsRes = await fetch(`${API_ENDPOINT}/step_data`, {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          });
-          if (stepsRes.ok) {
-            const stepsData = await stepsRes.json();
-            if (stepsData && stepsData.labels && stepsData.values) {
-              setChartData({
-                labels: stepsData.labels,
-                datasets: [
-                  {
-                    label: "Steps",
-                    data: stepsData.values,
-                    borderColor: "#1e3a8a",
-                    backgroundColor: "rgba(30, 58, 138, 0.2)",
-                    tension: 0.4,
-                  },
-                ],
-              });
-            } else {
-              setChartData({
-                labels: [],
-                datasets: [
-                  {
-                    label: "Steps",
-                    data: [],
-                    borderColor: "#1e3a8a",
-                    backgroundColor: "rgba(30, 58, 138, 0.2)",
-                    tension: 0.4,
-                  },
-                ],
-              });
-            }
+          const stepsData = await healthAPI.getMetricsChart('steps');
+          if (stepsData && stepsData.labels && stepsData.values) {
+            setChartData({
+              labels: stepsData.labels,
+              datasets: [
+                {
+                  label: "Steps",
+                  data: stepsData.values,
+                  borderColor: "#1e3a8a",
+                  backgroundColor: "rgba(30, 58, 138, 0.2)",
+                  tension: 0.4,
+                },
+              ],
+            });
           }
         } catch (error) {
           console.error("Error fetching steps data:", error);
-          setChartData({
-            labels: [],
-            datasets: [
-              {
-                label: "Steps",
-                data: [],
-                borderColor: "#1e3a8a",
-                backgroundColor: "rgba(30, 58, 138, 0.2)",
-                tension: 0.4,
-              },
-            ],
-          });
         }
 
         // Fetch weekly activity data
         try {
-          const activityRes = await fetch(`${API_ENDPOINT}/activity_data`, {
-            method: "GET",
-            credentials: "include",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          });
-          
-          if (activityRes.ok) {
-            const activityData = await activityRes.json();
-            
-            if (activityData && activityData.labels && activityData.values) {
-              setWeeklyActivityData({
-                labels: activityData.labels,
-                datasets: [
-                  {
-                    label: "Active Minutes",
-                    data: activityData.values,
-                    backgroundColor: "rgba(30, 58, 138, 0.6)",
-                  },
-                ],
-              });
-            }
+          const activityData = await healthAPI.getActivityData();
+          if (activityData && activityData.labels && activityData.values) {
+            setWeeklyActivityData({
+              labels: activityData.labels,
+              datasets: [
+                {
+                  label: "Active Minutes",
+                  data: activityData.values,
+                  backgroundColor: "rgba(30, 58, 138, 0.6)",
+                },
+              ],
+            });
           }
         } catch (error) {
           console.error("Error fetching activity data:", error);
@@ -350,59 +261,38 @@ export default function Dashboard() {
 
         // Fetch sleep breakdown data
         try {
-          const sleepRes = await fetch(`${API_ENDPOINT}/sleep_data`, {
-            credentials: "include",
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            }
-          });
-          
-          if (sleepRes.ok) {
-            const data = await sleepRes.json();
-            if (data && data.labels && data.values) {
-              setSleepBreakdownData({
-                labels: data.labels,
-                datasets: [
-                  {
-                    data: data.values,
-                    backgroundColor: [
-                      "rgba(30, 58, 138, 0.6)",
-                      "rgba(59, 130, 246, 0.6)",
-                      "rgba(99, 102, 241, 0.6)",
-                      "rgba(139, 92, 246, 0.6)",
-                    ],
-                    borderColor: [
-                      "rgba(30, 58, 138, 1)",
-                      "rgba(59, 130, 246, 1)",
-                      "rgba(99, 102, 241, 1)",
-                      "rgba(139, 92, 246, 1)",
-                    ],
-                    borderWidth: 1,
-                  },
-                ],
-              });
-            }
+          const sleepData = await healthAPI.getSleepData();
+          if (sleepData && sleepData.labels && sleepData.values) {
+            setSleepBreakdownData({
+              labels: sleepData.labels,
+              datasets: [
+                {
+                  data: sleepData.values,
+                  backgroundColor: [
+                    "rgba(30, 58, 138, 0.6)",
+                    "rgba(59, 130, 246, 0.6)",
+                    "rgba(99, 102, 241, 0.6)",
+                    "rgba(139, 92, 246, 0.6)",
+                  ],
+                  borderColor: [
+                    "rgba(30, 58, 138, 1)",
+                    "rgba(59, 130, 246, 1)",
+                    "rgba(99, 102, 241, 1)",
+                    "rgba(139, 92, 246, 1)",
+                  ],
+                  borderWidth: 1,
+                },
+              ],
+            });
           }
         } catch (error) {
           console.error("Error fetching sleep data:", error);
         }
-        
+
         // Fetch weekly summary
         try {
-          const summaryRes = await fetch(`${API_ENDPOINT}/weekly_summary`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ username: username })
-          });
-          
-          if (summaryRes.ok) {
-            const data = await summaryRes.json();
-            setWeeklySummary(data);
-          } else {
-            setWeeklySummary(null);
-          }
+          const summaryData = await healthAPI.getWeeklySummary();
+          setWeeklySummary(summaryData);
         } catch (error) {
           console.error("Error fetching weekly summary:", error);
           setWeeklySummary(null);
@@ -410,10 +300,10 @@ export default function Dashboard() {
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
         setAiRecommendations({
-          summary: "Unable to fetch recommendations. Please check your Google Fit connection.",
+          summary: "Unable to fetch recommendations. Please check your connection.",
           insights: [
-            "Make sure you have granted all necessary permissions to access your health data.",
-            "Try refreshing the page or reconnecting your Google Fit account.",
+            "Make sure you have granted all necessary permissions.",
+            "Try refreshing the page.",
             "Check your internet connection and try again.",
             "Contact support if the issue persists.",
           ]
@@ -465,41 +355,22 @@ export default function Dashboard() {
 
     setIsSubmitting(true);
     try {
-      // Send the metric to the server
-      await fetch("https://healthrec.onrender.com/add_metric", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({
-          metric: selectedMetric,
-          value: parseFloat(metricValue)
-        }),
-      });
+      await healthAPI.addMetric(selectedMetric, parseFloat(metricValue));
       
       // Reset form
       setMetricValue("");
       setSelectedMetric(null);
       
       // Refresh metrics data
-      const res = await fetch("https://healthrec.onrender.com/last_data", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        }
+      const metricsData = await healthAPI.getMetrics();
+      setMetrics({
+        steps: { value: metricsData.steps || 0, trend: "stable" },
+        sleep: { value: metricsData.sleep || 0, trend: "stable" },
+        heartRate: { value: metricsData.heart_rate || 0, trend: "stable" },
+        weight: { value: metricsData.weight || 0, trend: "stable" },
+        calories: { value: metricsData.calories || 0, trend: "stable" },
+        activeMinutes: { value: metricsData.activity_minutes || 0, trend: "stable" },
       });
-      
-      if (res.ok) {
-        const metricsData = await res.json();
-        setMetrics({
-          steps: { value: metricsData.steps || 0, trend: metricsData.steps_trend || "stable" },
-          sleep: { value: metricsData.sleep || 0, trend: metricsData.sleep_trend || "stable" },
-          heartRate: { value: metricsData.heart_rate || 0, trend: metricsData.heart_rate_trend || "stable" },
-          weight: { value: metricsData.weight || 0, trend: metricsData.weight_trend || "stable" },
-          calories: { value: metricsData.calories || 0, trend: metricsData.calories_trend || "stable" },
-          activeMinutes: { value: metricsData.active_minutes || 0, trend: metricsData.active_minutes_trend || "stable" },
-        });
-      }
     } catch (error) {
       console.error("Error adding metric:", error);
     } finally {

@@ -112,14 +112,17 @@ export function HealthInterpreter() {
     if (!message.trim()) return;
     setIsLoading(true);
     try {
-      // Use the healthAPI.explainHealthMetrics function
-      const data = await healthAPI.explainHealthMetrics(message);
+      console.log('Sending request to health interpreter:', message);
+      // Use the healthAPI.explainHealthMetric function
+      const data = await healthAPI.explainHealthMetric(message);
+      console.log('Received response from health interpreter:', data);
 
       if (data.error) {
         throw new Error(data.error);
       }
 
       const parsedResponse = parseResponse(data.explanation);
+      console.log('Parsed response:', parsedResponse);
       setResponse(parsedResponse);
       setHistory((prev) => [...prev, { question: message, response: parsedResponse }]);
       setShowModal(true);
@@ -128,7 +131,7 @@ export function HealthInterpreter() {
         JSON.stringify([...history, { question: message, response: parsedResponse }])
       );
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error in handleSubmit:", error);
     }
     setIsLoading(false);
     setMessage("");

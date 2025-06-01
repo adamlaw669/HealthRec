@@ -168,8 +168,8 @@ const Metrics: React.FC = () => {
 
         // Fetch AI recommendations
         try {
-          const { recommendations, status } = await healthAPI.recommendations(username);
-          setIsAiOnline(status === 200 || String(status) === "success");
+          const recommendations = await healthAPI.getHealthRecommendation();
+          setIsAiOnline(true);
           
           if (recommendations) {
             // Handle general recommendations
