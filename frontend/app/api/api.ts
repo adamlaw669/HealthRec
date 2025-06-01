@@ -40,39 +40,64 @@ const handleError = (error: unknown) => {
 // Function to get CSRF token before making requests
 export const getCsrfToken = async () => {
   try {
-    const response = await apiClient.get("/api/csrf-token/");
-    apiClient.defaults.headers["X-CSRFToken"] = response.data.csrfToken;
-    return response.data.csrfToken;
+    const response = await apiClient.get("/csrf-cookie", {
+      withCredentials: true
+    });
+    
+    // Try to get token from response
+    const token = response.data.csrfToken;
+    if (token) {
+      apiClient.defaults.headers["X-CSRFToken"] = token;
+      return token;
+    }
+    
+    // If no token in response, try to get from cookie
+    const cookies = document.cookie.split(';');
+    const csrfCookie = cookies.find(cookie => cookie.trim().startsWith('csrftoken='));
+    if (csrfCookie) {
+      const cookieToken = csrfCookie.split('=')[1];
+      apiClient.defaults.headers["X-CSRFToken"] = cookieToken;
+      return cookieToken;
+    }
+    
+    throw new Error("No CSRF token received");
   } catch (error) {
-    console.error("Failed to get CSRF token:", handleError(error));
+    console.error("Failed to get CSRF token:", error);
     return null;
   }
 };
 
 // Authentication API
 export const authAPI = {
-  basic_signup: async (username: string, password: string) => {
+  basic_signup: async (email: string, password: string) => {
     try {
-      const csrfToken = await getCsrfToken(); 
-      const response = await fetch(`${API_BASE_URL}/basic_signup`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}), // Include CSRF token if available
-        },
-        body: JSON.stringify({ username, password }), // Pass the username and password in the request body
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Signup failed");
+      const csrfToken = await getCsrfToken();
+      if (!csrfToken) {
+        throw new Error("Failed to get CSRF token");
       }
-      const data = await response.json();
-      if (data.token) {
-        localStorage.setItem("token", data.token);
+
+      const response = await apiClient.post(
+        "/basic_signup",
+        { email, password },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken
+          },
+          withCredentials: true
+        }
+      );
+
+      if (response.data.error) {
+        throw new Error(response.data.error);
       }
-      return data; // Return the response data
+
+      return response.data;
     } catch (error: unknown) {
-      throw handleError(error); // Handle errors appropriately
+      if (axios.isAxiosError(error) && error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw new Error("An error occurred during signup. Please try again.");
     }
   },
 
@@ -86,10 +111,15 @@ export const authAPI = {
           headers: csrfToken ? { "X-CSRFToken": csrfToken } : undefined,
         },
       );
-      // Store token on successful login
-      if (response.data.token) {
-        localStorage.setItem("token", response.data.token);
+      
+      // Store user data and CSRF token
+      if (response.data.user) {
+        localStorage.setItem("user", JSON.stringify(response.data.user));
       }
+      if (response.data.csrfToken) {
+        apiClient.defaults.headers["X-CSRFToken"] = response.data.csrfToken;
+      }
+      
       return response.data;
     } catch (error: unknown) {
       throw handleError(error);
