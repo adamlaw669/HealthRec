@@ -8,7 +8,10 @@ urlpatterns = [
     path('signup', views.signup_view, name = 'signup'),
     path('basic_signup', views.basic_signup, name = 'basic_signup'),
     path('explain-health', views.explain_health_metrics, name='explain_health'),
+<<<<<<< HEAD
     path('metric-help', views.get_metric_help, name='metric_help'),
+=======
+>>>>>>> interactive-user-ai-sesh
     path('verify', views.verify_token, name = 'verify'),
     path('recommendations', views.get_health_recommendation, name='recommendations'),
     path('health_data', views.health_data_view, name='health_data'),
