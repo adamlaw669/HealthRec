@@ -162,7 +162,12 @@ export const authAPI = {
   // Get current user profile
   getProfile: async () => {
     try {
-      const response = await apiClient.get("/profile");
+      const userData = localStorage.getItem("user");
+      if (!userData) {
+        throw new Error("No user data found in localStorage");
+      }
+      const { username } = JSON.parse(userData);
+      const response = await apiClient.get(`/profile?username=${username}`);
       return response.data;
     } catch (error: unknown) {
       throw handleError(error);
@@ -305,7 +310,7 @@ export const authAPI = {
 
   // Add status check endpoints
   checkOpenAIStatus: async () => {
-    const response = await apiClient.get("/ai_status");
+    const response = await apiClient.get("/check_openai_status");
     return response.data;
   },
 
@@ -326,15 +331,15 @@ export const authAPI = {
 
 // Health Recommendations API
 export const healthAPI = {
-  recommendations: async (username: string) => {
+  getHealthRecommendation: async () => {
     try {
-      console.log("Sending recommendation request for username:", username);
-      const response = await apiClient.post("/recommendations", { username });
-      console.log("Recommendation response:", response.data);
-      return {
-        recommendations: response.data.recommendations,
-        status: response.status,
-      };
+      const userData = localStorage.getItem("user");
+      if (!userData) {
+        throw new Error("No user data found in localStorage");
+      }
+      const { username } = JSON.parse(userData);
+      const response = await apiClient.get(`/get_health_recommendation?username=${username}`);
+      return response.data;
     } catch (error: any) {
       console.error("Recommendation API error:", error.response?.data || error);
       if (error.response?.status === 401) {
@@ -355,7 +360,7 @@ export const healthAPI = {
       }
       const { username } = JSON.parse(userData);
       const response = await apiClient.get(`/health_data?username=${username}`);
-      return response;
+      return response.data;
     } catch (error: unknown) {
       throw handleError(error);
     }
@@ -369,7 +374,7 @@ export const healthAPI = {
         throw new Error("No user data found in localStorage");
       }
       const { username } = JSON.parse(userData);
-      const response = await apiClient.post("/facts", { username });
+      const response = await apiClient.post("/HealthFacts", { username });
       return response.data;
     } catch (error: unknown) {
       throw handleError(error);
@@ -431,9 +436,14 @@ export const healthAPI = {
   },
 
   // Get latest metrics
-  getLatestMetrics: async () => {
+  getMetrics: async () => {
     try {
-      const response = await apiClient.get("/get_metrics");
+      const userData = localStorage.getItem("user");
+      if (!userData) {
+        throw new Error("No user data found in localStorage");
+      }
+      const { username } = JSON.parse(userData);
+      const response = await apiClient.get(`/get_metrics?username=${username}`);
       return response.data;
     } catch (error: unknown) {
       throw handleError(error);
@@ -441,14 +451,14 @@ export const healthAPI = {
   },
 
   // Add new function to fetch chart data
-  getChartData: async (metricType: string, timeRange = "week") => {
+  getMetricsChart: async (metricType: string) => {
     try {
-      const response = await apiClient.get(
-        `/metrics_chart/${metricType}`,
-        {
-          params: { timeRange },
-        },
-      );
+      const userData = localStorage.getItem("user");
+      if (!userData) {
+        throw new Error("No user data found in localStorage");
+      }
+      const { username } = JSON.parse(userData);
+      const response = await apiClient.get(`/metrics_chart/${metricType}?username=${username}`);
       return response.data;
     } catch (error: unknown) {
       throw handleError(error);
@@ -456,7 +466,7 @@ export const healthAPI = {
   },
 
   // Generate doctor's report
-  generateDoctorReport: async (
+  getDoctorReport: async (
     email: string,
     metrics: string[],
     customNotes: string = "",
@@ -477,11 +487,15 @@ export const healthAPI = {
   },
 
   // Download health data
-  downloadHealthData: async (format = "json") => {
+  downloadHealthData: async (format: 'json' | 'csv' = 'json') => {
     try {
-      const response = await apiClient.get("/download", {
-        params: { format },
-        responseType: "blob",
+      const userData = localStorage.getItem("user");
+      if (!userData) {
+        throw new Error("No user data found in localStorage");
+      }
+      const { username } = JSON.parse(userData);
+      const response = await apiClient.get(`/download_health_data?username=${username}&format=${format}`, {
+        responseType: format === 'csv' ? 'blob' : 'json'
       });
       return response.data;
     } catch (error: unknown) {
@@ -680,10 +694,14 @@ export const googleCallback = async (code: string): Promise<any> => {
 
 // Contact/Support API
 export const supportAPI = {
-  submitContactForm: async (formData: any) => {
+  contactSupport: async (name: string, email: string, message: string) => {
     try {
       const csrfToken = await getCsrfToken();
-      const response = await apiClient.post("/support_contact", formData, {
+      const response = await apiClient.post("/support_contact", {
+        name,
+        email,
+        message
+      }, {
         headers: csrfToken ? { "X-CSRFToken": csrfToken } : undefined,
       });
       return response.data;

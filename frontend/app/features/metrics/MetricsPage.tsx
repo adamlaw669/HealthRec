@@ -82,13 +82,17 @@ const Metrics: React.FC = () => {
         // Get username from localStorage
         const userData = localStorage.getItem("user");
         if (!userData) {
-          throw new Error("No user data found in localStorage");
+          throw new Error("Please log in to view your health metrics");
         }
         const { username } = JSON.parse(userData);
 
         // Fetch health data using healthAPI
         const healthDataResponse = await healthAPI.getHealthData();
         const healthData = healthDataResponse.data;
+        
+        if (!healthData || healthData.length === 0) {
+          throw new Error("No health data available. Please add some metrics to see your data.");
+        }
         
         // Process health data for charts
         const labels = healthData.map((entry: any) => new Date(entry.date).toLocaleDateString());
@@ -168,15 +172,25 @@ const Metrics: React.FC = () => {
           setIsAiOnline(status === 200 || String(status) === "success");
           
           if (recommendations) {
-            setCorrelationInsights(recommendations.correlation ? 
-              (Array.isArray(recommendations.correlation) ? recommendations.correlation : [recommendations.correlation]) : 
-              []
-            );
+            // Handle general recommendations
+            if (recommendations.general) {
+              const general = recommendations.general;
+              if (typeof general === 'object') {
+                if (general.insights) {
+                  setCorrelationInsights(Array.isArray(general.insights) ? general.insights : [general.insights]);
+                }
+                if (general.tips) {
+                  setAiTips(Array.isArray(general.tips) ? general.tips : [general.tips]);
+                }
+              } else if (typeof general === 'string') {
+                setCorrelationInsights([general]);
+              }
+            }
             
-            setAiTips(recommendations.tips ? 
-              (Array.isArray(recommendations.tips) ? recommendations.tips : [recommendations.tips]) : 
-              []
-            );
+            // Handle tips if not already set
+            if (!aiTips.length && recommendations.tips) {
+              setAiTips(Array.isArray(recommendations.tips) ? recommendations.tips : [recommendations.tips]);
+            }
           }
         } catch (err: any) {
           console.error("Failed to fetch AI recommendations:", err.message);

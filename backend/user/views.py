@@ -326,6 +326,19 @@ def health_data_view(request):
         # Get last 7 days of data
         last_7_days = now().date() - timedelta(days=7)
         data = DailyHealthData.objects.filter(user=user, date__gte=last_7_days).order_by('date')
+        
+        if not data.exists():
+            # Return empty data structure if no data exists
+            return Response([{
+                "date": (now().date() - timedelta(days=i)).isoformat(),
+                "steps": 0,
+                "heart_rate": 0,
+                "sleep": 0,
+                "weight": 0,
+                "activity_minutes": 0,
+                "calories": 0
+            } for i in range(7)])
+            
         serializer = DailydataSerializer(data, many=True)
         return Response(serializer.data)
     except Exception as e:
@@ -542,3 +555,601 @@ def send_health_report(request):
         
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
+
+@api_view(["POST"])
+def add_metric_view(request):
+    try:
+        username = request.data.get('username')
+        metric = request.data.get('metric')
+        value = request.data.get('value')
+        
+        if not all([username, metric, value]):
+            return Response({"error": "Missing required fields"}, status=400)
+            
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+            
+        today = now().date()
+        health_data, created = DailyHealthData.objects.get_or_create(
+            user=user,
+            date=today,
+            defaults={
+                'steps': 0,
+                'heart_rate': 0,
+                'sleep': 0,
+                'weight': 0,
+                'activity_minutes': 0,
+                'calories': 0
+            }
+        )
+        
+        # Update the specific metric
+        if metric == 'steps':
+            health_data.steps = value
+        elif metric == 'heartRate':
+            health_data.heart_rate = value
+        elif metric == 'sleep':
+            health_data.sleep = value
+        elif metric == 'weight':
+            health_data.weight = value
+        elif metric == 'calories':
+            health_data.calories = value
+        elif metric == 'activeMinutes':
+            health_data.activity_minutes = value
+            
+        health_data.save()
+        return Response({"message": "Metric added successfully"}, status=200)
+    except Exception as e:
+        logger.error(f"Error in add_metric_view: {e}")
+        return Response({"error": "An error occurred while adding metric"}, status=500)
+
+@api_view(["GET"])
+def get_metrics_view(request):
+    try:
+        username = request.query_params.get('username')
+        if not username:
+            return Response({"error": "Username is required"}, status=400)
+            
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+            
+        today = now().date()
+        health_data = DailyHealthData.objects.filter(user=user, date=today).first()
+        
+        if not health_data:
+            return Response({
+                "steps": 0,
+                "heart_rate": 0,
+                "sleep": 0,
+                "weight": 0,
+                "activity_minutes": 0,
+                "calories": 0
+            })
+            
+        return Response({
+            "steps": health_data.steps,
+            "heart_rate": health_data.heart_rate,
+            "sleep": health_data.sleep,
+            "weight": health_data.weight,
+            "activity_minutes": health_data.activity_minutes,
+            "calories": health_data.calories
+        })
+    except Exception as e:
+        logger.error(f"Error in get_metrics_view: {e}")
+        return Response({"error": "An error occurred while fetching metrics"}, status=500)
+
+@api_view(["GET"])
+def metrics_chart_view(request, metric_type):
+    try:
+        username = request.query_params.get('username')
+        if not username:
+            return Response({"error": "Username is required"}, status=400)
+            
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+            
+        today = now().date()
+        last_7_days = today - timedelta(days=6)
+        data = DailyHealthData.objects.filter(user=user, date__range=[last_7_days, today]).order_by('date')
+        
+        labels = []
+        values = []
+        
+        for i in range(7):
+            day = last_7_days + timedelta(days=i)
+            labels.append(day.strftime("%a"))
+            day_data = data.filter(date=day).first()
+            
+            if day_data:
+                if metric_type == 'steps':
+                    values.append(day_data.steps)
+                elif metric_type == 'heart_rate':
+                    values.append(day_data.heart_rate)
+                elif metric_type == 'sleep':
+                    values.append(day_data.sleep)
+                elif metric_type == 'weight':
+                    values.append(day_data.weight)
+                elif metric_type == 'calories':
+                    values.append(day_data.calories)
+                elif metric_type == 'activity':
+                    values.append(day_data.activity_minutes)
+            else:
+                values.append(0)
+                
+        return Response({"labels": labels, "values": values})
+    except Exception as e:
+        logger.error(f"Error in metrics_chart_view: {e}")
+        return Response({"error": "An error occurred while fetching chart data"}, status=500)
+
+@api_view(["POST"])
+def get_doctor_report(request):
+    try:
+        email = request.data.get('email')
+        metrics = request.data.get('metrics', [])
+        custom_notes = request.data.get('custom_notes', '')
+        
+        if not email:
+            return Response({"error": "Email is required"}, status=400)
+            
+        # Generate report using OpenAI
+        prompt = f"Generate a detailed health report for a doctor based on the following metrics: {metrics}. Additional notes: {custom_notes}"
+        report = get_openai_response(prompt, "system")
+        
+        # Send email with report
+        send_mail(
+            'Your Health Report',
+            report,
+            settings.DEFAULT_FROM_EMAIL,
+            [email],
+            fail_silently=False,
+        )
+        
+        return Response({"message": "Report sent successfully"})
+    except Exception as e:
+        logger.error(f"Error in get_doctor_report: {e}")
+        return Response({"error": "An error occurred while generating report"}, status=500)
+
+@api_view(["GET"])
+def download_health_data(request):
+    try:
+        username = request.query_params.get('username')
+        format = request.query_params.get('format', 'json')
+        
+        if not username:
+            return Response({"error": "Username is required"}, status=400)
+            
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+            
+        data = DailyHealthData.objects.filter(user=user).order_by('-date')
+        serializer = DailydataSerializer(data, many=True)
+        
+        if format == 'csv':
+            import csv
+            from django.http import HttpResponse
+            
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename="health_data.csv"'
+            
+            writer = csv.writer(response)
+            writer.writerow(['Date', 'Steps', 'Heart Rate', 'Sleep', 'Weight', 'Activity Minutes', 'Calories'])
+            
+            for item in serializer.data:
+                writer.writerow([
+                    item['date'],
+                    item['steps'],
+                    item['heart_rate'],
+                    item['sleep'],
+                    item['weight'],
+                    item['activity_minutes'],
+                    item['calories']
+                ])
+                
+            return response
+        else:
+            return Response(serializer.data)
+    except Exception as e:
+        logger.error(f"Error in download_health_data: {e}")
+        return Response({"error": "An error occurred while downloading data"}, status=500)
+
+@api_view(["GET"])
+def check_openai_status(request):
+    try:
+        # Test OpenAI API
+        response = openai.Completion.create(
+            engine="text-davinci-003",
+            prompt="Test",
+            max_tokens=5
+        )
+        return Response({"status": "online"})
+    except Exception as e:
+        logger.error(f"Error checking OpenAI status: {e}")
+        return Response({"status": "offline"})
+
+@api_view(["POST"])
+def support_contact(request):
+    try:
+        name = request.data.get('name')
+        email = request.data.get('email')
+        message = request.data.get('message')
+        
+        if not all([name, email, message]):
+            return Response({"error": "All fields are required"}, status=400)
+            
+        # Send email
+        send_mail(
+            f'Support Request from {name}',
+            message,
+            email,
+            [settings.SUPPORT_EMAIL],
+            fail_silently=False,
+        )
+        
+        return Response({"message": "Message sent successfully"})
+    except Exception as e:
+        logger.error(f"Error in support_contact: {e}")
+        return Response({"error": "An error occurred while sending message"}, status=500)
+
+@api_view(["GET"])
+def get_faqs(request):
+    try:
+        # Return predefined FAQs
+        faqs = [
+            {
+                "question": "How do I track my health metrics?",
+                "answer": "You can add your health metrics using the '+' button on the metrics page."
+            },
+            {
+                "question": "How often should I update my metrics?",
+                "answer": "We recommend updating your metrics daily for the most accurate insights."
+            },
+            {
+                "question": "How are AI recommendations generated?",
+                "answer": "Our AI analyzes your health data patterns to provide personalized recommendations."
+            }
+        ]
+        return Response(faqs)
+    except Exception as e:
+        logger.error(f"Error in get_faqs: {e}")
+        return Response({"error": "An error occurred while fetching FAQs"}, status=500)
+
+@api_view(["GET"])
+def profile_view(request):
+    try:
+        username = request.query_params.get('username')
+        if not username:
+            return Response({"error": "Username is required"}, status=400)
+            
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+            
+        return Response({
+            "username": user.username,
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "date_joined": user.date_joined
+        })
+    except Exception as e:
+        logger.error(f"Error in profile_view: {e}")
+        return Response({"error": "An error occurred while fetching profile"}, status=500)
+
+@api_view(["PUT"])
+def update_profile(request):
+    try:
+        username = request.data.get('username')
+        if not username:
+            return Response({"error": "Username is required"}, status=400)
+            
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+            
+        # Update user fields
+        if 'first_name' in request.data:
+            user.first_name = request.data['first_name']
+        if 'last_name' in request.data:
+            user.last_name = request.data['last_name']
+        if 'email' in request.data:
+            user.email = request.data['email']
+            
+        user.save()
+        return Response({"message": "Profile updated successfully"})
+    except Exception as e:
+        logger.error(f"Error in update_profile: {e}")
+        return Response({"error": "An error occurred while updating profile"}, status=500)
+
+@api_view(["PUT"])
+def update_settings(request):
+    try:
+        username = request.data.get('username')
+        if not username:
+            return Response({"error": "Username is required"}, status=400)
+            
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+            
+        # Get or create user settings
+        settings, created = UserSettings.objects.get_or_create(user=user)
+        
+        # Update settings
+        if 'notifications_enabled' in request.data:
+            settings.notifications_enabled = request.data['notifications_enabled']
+        if 'theme' in request.data:
+            settings.theme = request.data['theme']
+        if 'units' in request.data:
+            settings.units = request.data['units']
+            
+        settings.save()
+        return Response({"message": "Settings updated successfully"})
+    except Exception as e:
+        logger.error(f"Error in update_settings: {e}")
+        return Response({"error": "An error occurred while updating settings"}, status=500)
+
+@api_view(["GET"])
+def user_settings(request):
+    try:
+        username = request.query_params.get('username')
+        if not username:
+            return Response({"error": "Username is required"}, status=400)
+            
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+            
+        settings, created = UserSettings.objects.get_or_create(user=user)
+        return Response({
+            "notifications_enabled": settings.notifications_enabled,
+            "theme": settings.theme,
+            "units": settings.units
+        })
+    except Exception as e:
+        logger.error(f"Error in user_settings: {e}")
+        return Response({"error": "An error occurred while fetching settings"}, status=500)
+
+@api_view(["POST"])
+def account_deletion(request):
+    try:
+        username = request.data.get('username')
+        days = request.data.get('days', 30)
+        
+        if not username:
+            return Response({"error": "Username is required"}, status=400)
+            
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+            
+        # Schedule account deletion
+        deletion_date = now() + timedelta(days=days)
+        AccountDeletion.objects.update_or_create(
+            user=user,
+            defaults={'scheduled_date': deletion_date}
+        )
+        
+        return Response({"message": f"Account scheduled for deletion in {days} days"})
+    except Exception as e:
+        logger.error(f"Error in account_deletion: {e}")
+        return Response({"error": "An error occurred while scheduling deletion"}, status=500)
+
+@api_view(["POST"])
+def cancel_deletion(request):
+    try:
+        username = request.data.get('username')
+        if not username:
+            return Response({"error": "Username is required"}, status=400)
+            
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+            
+        # Cancel scheduled deletion
+        AccountDeletion.objects.filter(user=user).delete()
+        return Response({"message": "Account deletion cancelled"})
+    except Exception as e:
+        logger.error(f"Error in cancel_deletion: {e}")
+        return Response({"error": "An error occurred while cancelling deletion"}, status=500)
+
+@api_view(["GET"])
+def google_login(request):
+    try:
+        flow = Flow.from_client_secrets_file(
+            'credentials.json',
+            scopes=[
+                'openid', 'email', 'profile',
+                'https://www.googleapis.com/auth/fitness.activity.read',
+                'https://www.googleapis.com/auth/fitness.heart_rate.read',
+                'https://www.googleapis.com/auth/fitness.sleep.read',
+                'https://www.googleapis.com/auth/fitness.body.read'
+            ],
+            redirect_uri='http://localhost:3000/dashboard'
+        )
+        
+        auth_url, _ = flow.authorization_url(
+            access_type='offline',
+            include_granted_scopes='true'
+        )
+        
+        return Response({"authUrl": auth_url})
+    except Exception as e:
+        logger.error(f"Error in google_login: {e}")
+        return Response({"error": "An error occurred while initiating Google login"}, status=500)
+
+@api_view(["GET", "POST"])
+def google_callback(request):
+    try:
+        code = request.GET.get('code') or request.data.get('code')
+        if not code:
+            return Response({"error": "Authorization code is required"}, status=400)
+            
+        flow = Flow.from_client_secrets_file(
+            'credentials.json',
+            scopes=[
+                'openid', 'email', 'profile',
+                'https://www.googleapis.com/auth/fitness.activity.read',
+                'https://www.googleapis.com/auth/fitness.heart_rate.read',
+                'https://www.googleapis.com/auth/fitness.sleep.read',
+                'https://www.googleapis.com/auth/fitness.body.read'
+            ],
+            redirect_uri='http://localhost:3000/dashboard'
+        )
+        
+        flow.fetch_token(code=code)
+        credentials = flow.credentials
+        
+        # Get user info
+        idinfo = id_token.verify_oauth2_token(
+            credentials.id_token, 
+            google_requests.Request()
+        )
+        
+        email = idinfo['email']
+        name = idinfo.get('name', '')
+        name_parts = name.split()
+        first_name = name_parts[0] if name_parts else ''
+        last_name = name_parts[1] if len(name_parts) > 1 else ''
+        
+        # Create or get user
+        user, created = User.objects.get_or_create(
+            username=email,
+            defaults={
+                "first_name": first_name,
+                "last_name": last_name,
+                "email": email
+            }
+        )
+        
+        # Store credentials
+        UserCredentials.objects.update_or_create(
+            user=user,
+            defaults={
+                'token': credentials.token,
+                'refresh_token': credentials.refresh_token,
+                'token_uri': credentials.token_uri,
+                'client_id': credentials.client_id,
+                'client_secret': credentials.client_secret,
+                'scopes': credentials.scopes
+            }
+        )
+        
+        # Fetch and save health data
+        fetch_and_save_health_data(user, credentials)
+        
+        return Response({
+            "message": "Google login successful",
+            "user": {
+                "username": user.username,
+                "name": user.first_name
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error in google_callback: {e}")
+        return Response({"error": "An error occurred during Google authentication"}, status=500)
+
+@api_view(["GET"])
+def google_status(request):
+    try:
+        username = request.query_params.get('username')
+        if not username:
+            return Response({"error": "Username is required"}, status=400)
+            
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+            
+        credentials = UserCredentials.objects.filter(user=user).first()
+        if not credentials:
+            return Response({"connected": False})
+            
+        # Check if token is valid
+        try:
+            id_token.verify_oauth2_token(
+                credentials.token,
+                google_requests.Request()
+            )
+            return Response({"connected": True})
+        except:
+            return Response({"connected": False})
+    except Exception as e:
+        logger.error(f"Error in google_status: {e}")
+        return Response({"error": "An error occurred while checking Google status"}, status=500)
+
+@api_view(["GET"])
+def connect_google_fit(request):
+    try:
+        username = request.query_params.get('username')
+        if not username:
+            return Response({"error": "Username is required"}, status=400)
+            
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+            
+        flow = Flow.from_client_secrets_file(
+            'credentials.json',
+            scopes=[
+                'https://www.googleapis.com/auth/fitness.activity.read',
+                'https://www.googleapis.com/auth/fitness.heart_rate.read',
+                'https://www.googleapis.com/auth/fitness.sleep.read',
+                'https://www.googleapis.com/auth/fitness.body.read'
+            ],
+            redirect_uri='http://localhost:3000/dashboard'
+        )
+        
+        auth_url, _ = flow.authorization_url(
+            access_type='offline',
+            include_granted_scopes='true'
+        )
+        
+        return Response({"authUrl": auth_url})
+    except Exception as e:
+        logger.error(f"Error in connect_google_fit: {e}")
+        return Response({"error": "An error occurred while connecting Google Fit"}, status=500)
+
+@api_view(["GET"])
+def google_fit_status(request):
+    try:
+        username = request.query_params.get('username')
+        if not username:
+            return Response({"error": "Username is required"}, status=400)
+            
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+            
+        credentials = UserCredentials.objects.filter(user=user).first()
+        if not credentials:
+            return Response({"connected": False})
+            
+        # Check if Google Fit scopes are present
+        required_scopes = [
+            'https://www.googleapis.com/auth/fitness.activity.read',
+            'https://www.googleapis.com/auth/fitness.heart_rate.read',
+            'https://www.googleapis.com/auth/fitness.sleep.read',
+            'https://www.googleapis.com/auth/fitness.body.read'
+        ]
+        
+        has_all_scopes = all(scope in credentials.scopes for scope in required_scopes)
+        return Response({"connected": has_all_scopes})
+    except Exception as e:
+        logger.error(f"Error in google_fit_status: {e}")
+        return Response({"error": "An error occurred while checking Google Fit status"}, status=500)
