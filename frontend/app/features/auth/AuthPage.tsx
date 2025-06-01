@@ -19,25 +19,10 @@ export default function AuthPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
-  // Check if user is already logged in
   useEffect(() => {
-    const token = localStorage.getItem("token")
-    if (token) {
-      fetch("http://127.0.0.1:8000/verify", {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-        .then((res) => {
-          if (res.ok) {
-            navigate("/dashboard")
-          }
-        })
-        .catch(() => {
-          localStorage.removeItem("token")
-          localStorage.removeItem("refresh")
-        })
+    const user = localStorage.getItem("user")
+    if (user) {
+      navigate("/dashboard")
     }
   }, [navigate])
 
@@ -46,6 +31,8 @@ export default function AuthPage() {
       ...formData,
       [e.target.name]: e.target.value
     })
+    // Clear error when user starts typing
+    setError(null)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -55,17 +42,36 @@ export default function AuthPage() {
   
     try {
       if (mode === "signup") {
+        // Validate password length
+        if (formData.password.length < 8) {
+          throw new Error("Password must be at least 8 characters long")
+        }
+        
+        // Validate password match
         if (formData.password !== formData.confirmPassword) {
           throw new Error("Passwords do not match")
         }
+        
+        // Validate email format
+        if (!formData.email.includes('@')) {
+          throw new Error("Please enter a valid email address")
+        }
   
-        await authAPI.basic_signup(formData.email, formData.password)
-        localStorage.setItem("user", JSON.stringify({ username: formData.email }))
-        navigate("/dashboard")
+        const response = await authAPI.basic_signup(formData.email, formData.password)
+        if (response.user) {
+          localStorage.setItem("user", JSON.stringify(response.user))
+          navigate("/dashboard")
+        } else {
+          throw new Error("Signup failed. Please try again.")
+        }
       } else {
-        await authAPI.login(formData.email, formData.password)
-        localStorage.setItem("user", JSON.stringify({ username: formData.email }))
-        navigate("/dashboard")
+        const response = await authAPI.login(formData.email, formData.password)
+        if (response.user) {
+          localStorage.setItem("user", JSON.stringify(response.user))
+          navigate("/dashboard")
+        } else {
+          throw new Error("Login failed. Please check your credentials.")
+        }
       }
     } catch (err: any) {
       console.error("Error:", err)

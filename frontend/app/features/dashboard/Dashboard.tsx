@@ -175,7 +175,18 @@ export default function Dashboard() {
           const { recommendations, status } = await healthAPI.recommendations(username);
         
           if (recommendations?.general) {
-            setAiRecommendations(recommendations.general);
+            // Handle both string and array responses
+            const generalRecs = Array.isArray(recommendations.general) 
+              ? recommendations.general 
+              : recommendations.general.split('\n').filter((line: string) => line.trim());
+            
+            setAiRecommendations(generalRecs.length > 0 ? generalRecs : [
+              "Connect your Google Fit account to get personalized recommendations.",
+              "We'll analyze your health data to provide tailored insights.",
+              "Track your daily activities to receive AI-powered health advice.",
+              "Your data helps us understand your habits and suggest improvements.",
+              "Enable Google Fit sync for real-time health monitoring.",
+            ]);
             setIsAiOnline(status === 200 || String(status) === "success");
           } else {
             setAiRecommendations({
