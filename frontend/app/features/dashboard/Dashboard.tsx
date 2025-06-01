@@ -10,6 +10,7 @@ import "chart.js/auto"
 import { healthAPI } from "../../api/api"
 import { getInitialTheme, toggleTheme } from "../../utils/theme-utils"
 import AIStatus from "../../components/AIStatus"
+import { HealthInterpreter } from "../../../components/ui/HealthInterpreter"
 
 export default function Dashboard() {
   const { isSidebarOpen } = useSidebar()
@@ -40,7 +41,6 @@ export default function Dashboard() {
   })
 
   const [isLoading, setIsLoading] = useState(true)
-  const [username, setUsername] = useState<string>("")
   const [isAiOnline, setIsAiOnline] = useState(false)
   const [metrics, setMetrics] = useState({
     steps: { value: 5346, trend: "stable" },
@@ -133,7 +133,6 @@ export default function Dashboard() {
       username = "Guest";
     }
     
-    setUsername(username);
     console.log("Current username:", username);
 
     const initialDarkMode = getInitialTheme();
@@ -483,212 +482,180 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900">
+    <div className={`flex h-screen bg-gray-100 dark:bg-gray-900 ${isSidebarOpen ? "ml-64" : "ml-0"} transition-all duration-300`}>
       <Sidebar />
-      <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? "ml-64" : "ml-20"} p-6 overflow-auto`}>
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-semibold text-gray-800 dark:text-white">Dashboard</h1>
-            <div className="flex items-center space-x-4">
-              <AIStatus isOnline={isAiOnline} />
-              <button 
-                onClick={handleToggleTheme} 
-                className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-colors"
-                aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-              >
-                {darkMode ? <FaSun className="h-5 w-5" /> : <FaMoon className="h-5 w-5" />}
-              </button>
-            </div>
+      <div className="flex-1 p-8 overflow-y-auto">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-semibold text-gray-800 dark:text-white">Dashboard</h1>
+          <div className="flex items-center space-x-4">
+            <AIStatus isOnline={isAiOnline} />
+            <button 
+              onClick={handleToggleTheme} 
+              className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-colors"
+              aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {darkMode ? <FaSun className="h-5 w-5" /> : <FaMoon className="h-5 w-5" />}
+            </button>
           </div>
+        </div>
 
-          {isLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+        {/* Health Interpreter Section */}
+        <div className="mt-8">
+          <HealthInterpreter />
+        </div>
+
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* AI Recommendations */}
+            <div className="p-6 bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-800 dark:to-blue-900 rounded-lg shadow-lg text-white">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <FaBrain className="text-2xl mr-3" />
+                  <h2 className="text-xl font-bold">AI Health Recommendations</h2>
+                </div>
+                <AIStatus isOnline={isAiOnline} />
+              </div>
+              {aiRecommendations.length > 0 && (
+                <>
+                  <p className="text-lg mb-4">{aiRecommendations[0]}</p>
+                  <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg">
+                    <h3 className="font-semibold mb-2">Additional Insights:</h3>
+                    <ul className="list-disc list-inside space-y-1">
+                      {aiRecommendations.slice(1).map((tip, index) => (
+                        <li key={index}>{tip}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </>
+              )}
+              <div className="mt-4 text-sm text-blue-100">
+                <FaInfoCircle className="inline-block mr-1" />
+                Recommendations are personalized based on your health data and goals
+              </div>
             </div>
-          ) : (
-            <>
-              {/* AI Recommendations */}
-              <div className="p-6 bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-800 dark:to-blue-900 rounded-lg shadow-lg text-white mb-6">
-                <div className="flex items-center justify-between mb-4">
+
+            {/* Metrics Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Steps */}
+              <Link to="/metrics/steps" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <FaBrain className="text-2xl mr-3" />
-                    <h2 className="text-xl font-bold">AI Health Recommendations</h2>
+                    <FaWalking className="text-blue-600 text-2xl mr-3" />
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Steps</h2>
+                      <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                        {metrics.steps.value.toLocaleString()} {renderTrendIcon(metrics.steps.trend)}
+                      </p>
+                    </div>
                   </div>
-                  <AIStatus isOnline={isAiOnline} />
                 </div>
-                {aiRecommendations.length > 0 && (
-                  <>
-                    <p className="text-lg mb-4">{aiRecommendations[0]}</p>
-                    <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg">
-                      <h3 className="font-semibold mb-2">Additional Insights:</h3>
-                      <ul className="list-disc list-inside space-y-1">
-                        {aiRecommendations.slice(1).map((tip, index) => (
-                          <li key={index}>{tip}</li>
-                        ))}
-                      </ul>
+              </Link>
+
+              {/* Sleep */}
+              <Link to="/metrics/sleep" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <FaBed className="text-indigo-600 text-2xl mr-3" />
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Sleep</h2>
+                      <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                        {metrics.sleep.value} hrs {renderTrendIcon(metrics.sleep.trend)}
+                      </p>
                     </div>
-                  </>
-                )}
-                <div className="mt-4 text-sm text-blue-100">
-                  <FaInfoCircle className="inline-block mr-1" />
-                  Recommendations are personalized based on your health data and goals
+                  </div>
                 </div>
-              </div>
+              </Link>
 
-              {/* Metrics Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-                {/* Steps */}
-                <Link to="/metrics/steps" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <FaWalking className="text-blue-600 text-2xl mr-3" />
-                      <div>
-                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Steps</h2>
-                        <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                          {metrics.steps.value.toLocaleString()} {renderTrendIcon(metrics.steps.trend)}
-                        </p>
-                      </div>
+              {/* Heart Rate */}
+              <Link to="/metrics/heart-rate" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <FaHeartbeat className="text-red-600 text-2xl mr-3" />
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Heart Rate</h2>
+                      <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                        {metrics.heartRate.value} bpm {renderTrendIcon(metrics.heartRate.trend)}
+                      </p>
                     </div>
                   </div>
-                </Link>
-
-                {/* Sleep */}
-                <Link to="/metrics/sleep" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <FaBed className="text-indigo-600 text-2xl mr-3" />
-                      <div>
-                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Sleep</h2>
-                        <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                          {metrics.sleep.value} hrs {renderTrendIcon(metrics.sleep.trend)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-
-                {/* Heart Rate */}
-                <Link to="/metrics/heart-rate" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <FaHeartbeat className="text-red-600 text-2xl mr-3" />
-                      <div>
-                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Heart Rate</h2>
-                        <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                          {metrics.heartRate.value} bpm {renderTrendIcon(metrics.heartRate.trend)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-
-                {/* Weight */}
-                <Link to="/metrics/weight" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <FaWeight className="text-green-600 text-2xl mr-3" />
-                      <div>
-                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Weight</h2>
-                        <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                          {metrics.weight.value} kg {renderTrendIcon(metrics.weight.trend)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-
-                {/* Calories */}
-                <Link to="/metrics/calories" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <FaAppleAlt className="text-orange-600 text-2xl mr-3" />
-                      <div>
-                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Calories</h2>
-                        <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                          {metrics.calories.value} kcal {renderTrendIcon(metrics.calories.trend)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-
-                {/* Active Minutes */}
-                <Link to="/metrics/active-minutes" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <FaRunning className="text-emerald-600 text-2xl mr-3" />
-                      <div>
-                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Active Minutes</h2>
-                        <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                          {metrics.activeMinutes.value} min {renderTrendIcon(metrics.activeMinutes.trend)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              </div>
-
-              {/* Graphs Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                {/* Steps Graph */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
-                  <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-4">Weekly Steps</h2>
-                  {chartData ? (
-                    <Line
-                      data={chartData}
-                      options={{
-                        responsive: true,
-                        plugins: {
-                          legend: {
-                            display: false,
-                          },
-                          tooltip: {
-                            mode: "index",
-                            intersect: false,
-                          },
-                        },
-                        scales: {
-                          y: {
-                            beginAtZero: false,
-                            grid: {
-                              color: darkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)",
-                            },
-                          },
-                          x: {
-                            grid: {
-                              display: false,
-                            },
-                          },
-                        },
-                      }}
-                    />
-                  ) : (
-                    <p className="text-gray-600 dark:text-gray-400 mt-2">Loading chart data...</p>
-                  )}
                 </div>
+              </Link>
 
-                {/* Weekly Activity */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
-                  <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-4">Weekly Activity</h2>
-                  <Bar
-                    data={weeklyActivityData}
+              {/* Weight */}
+              <Link to="/metrics/weight" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <FaWeight className="text-green-600 text-2xl mr-3" />
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Weight</h2>
+                      <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                        {metrics.weight.value} kg {renderTrendIcon(metrics.weight.trend)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+
+              {/* Calories */}
+              <Link to="/metrics/calories" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <FaAppleAlt className="text-orange-600 text-2xl mr-3" />
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Calories</h2>
+                      <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                        {metrics.calories.value} kcal {renderTrendIcon(metrics.calories.trend)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+
+              {/* Active Minutes */}
+              <Link to="/metrics/active-minutes" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <FaRunning className="text-emerald-600 text-2xl mr-3" />
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Active Minutes</h2>
+                      <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                        {metrics.activeMinutes.value} min {renderTrendIcon(metrics.activeMinutes.trend)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            </div>
+
+            {/* Graphs Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Steps Graph */}
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+                <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-4">Weekly Steps</h2>
+                {chartData ? (
+                  <Line
+                    data={chartData}
                     options={{
                       responsive: true,
                       plugins: {
                         legend: {
                           display: false,
                         },
+                        tooltip: {
+                          mode: "index",
+                          intersect: false,
+                        },
                       },
                       scales: {
                         y: {
-                          beginAtZero: true,
+                          beginAtZero: false,
                           grid: {
                             color: darkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)",
-                          },
-                          title: {
-                            display: true,
-                            text: "Minutes",
                           },
                         },
                         x: {
@@ -699,191 +666,226 @@ export default function Dashboard() {
                       },
                     }}
                   />
-                </div>
+                ) : (
+                  <p className="text-gray-600 dark:text-gray-400 mt-2">Loading chart data...</p>
+                )}
+              </div>
 
-                {/* Sleep Breakdown */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
-                  <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-4">Sleep Breakdown</h2>
-                  <div className="flex items-center justify-center">
-                    <div style={{ width: "70%", height: "auto" }}>
-                      <Doughnut
-                        data={sleepBreakdownData}
-                        options={{
-                          responsive: true,
-                          plugins: {
-                            legend: {
-                              position: "right",
-                              labels: {
-                                color: darkMode ? "#f3f4f6" : "#1f2937",
-                              },
+              {/* Weekly Activity */}
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+                <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-4">Weekly Activity</h2>
+                <Bar
+                  data={weeklyActivityData}
+                  options={{
+                    responsive: true,
+                    plugins: {
+                      legend: {
+                        display: false,
+                      },
+                    },
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        grid: {
+                          color: darkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)",
+                        },
+                        title: {
+                          display: true,
+                          text: "Minutes",
+                        },
+                      },
+                      x: {
+                        grid: {
+                          display: false,
+                        },
+                      },
+                    },
+                  }}
+                />
+              </div>
+
+              {/* Sleep Breakdown */}
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+                <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-4">Sleep Breakdown</h2>
+                <div className="flex items-center justify-center">
+                  <div style={{ width: "70%", height: "auto" }}>
+                    <Doughnut
+                      data={sleepBreakdownData}
+                      options={{
+                        responsive: true,
+                        plugins: {
+                          legend: {
+                            position: "right",
+                            labels: {
+                              color: darkMode ? "#f3f4f6" : "#1f2937",
                             },
                           },
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Health Facts */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
-                  <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-4">Health Facts</h2>
-                  <div className="space-y-4">
-                    {healthFacts.length > 0 ? (
-                      <>
-                        {healthFacts.slice(0, showAllFacts ? 5 : 3).map((fact, index) => (
-                          <div key={index} className="flex items-start">
-                            <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-blue-100 dark:bg-blue-900 rounded-full mr-3">
-                              <span className="text-blue-600 dark:text-blue-300 font-bold">{index + 1}</span>
-                            </div>
-                            <p className="text-gray-700 dark:text-gray-300">{fact}</p>
-                          </div>
-                        ))}
-                        {healthFacts.length > 3 && (
-                          <button 
-                            onClick={() => setShowAllFacts(!showAllFacts)}
-                            className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
-                          >
-                            {showAllFacts ? "Show less" : "View more health facts"}
-                          </button>
-                        )}
-                      </>
-                    ) : (
-                      <p className="text-gray-600 dark:text-gray-400">Connect your health account to see interesting health facts.</p>
-                    )}
+                        },
+                      }}
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* Weekly Summary */}
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 mb-6">
-                <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-4">Weekly Summary</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {weeklySummary ? (
+              {/* Health Facts */}
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+                <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-4">Health Facts</h2>
+                <div className="space-y-4">
+                  {healthFacts.length > 0 ? (
                     <>
-                      <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-                        <h3 className="font-medium text-gray-800 dark:text-white mb-2">Active minutes</h3>
-                        <p className="text-gray-600 dark:text-gray-300">
-                          {weeklySummary?.summary?.[0] || "Analyzing your activity trends..."}
-                        </p>
-                      </div>
-                      <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-                        <h3 className="font-medium text-gray-800 dark:text-white mb-2">Sleep Analysis</h3>
-                        <p className="text-gray-600 dark:text-gray-300">
-                          {weeklySummary?.summary?.[1] || "Analyzing your sleep patterns..."}
-                        </p>
-                      </div>
-                      <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-                        <h3 className="font-medium text-gray-800 dark:text-white mb-2">Heart Health</h3>
-                        <p className="text-gray-600 dark:text-gray-300">
-                          {weeklySummary?.summary?.[2] || "Analyzing your heart health..."}
-                        </p>
-                      </div>
+                      {healthFacts.slice(0, showAllFacts ? 5 : 3).map((fact, index) => (
+                        <div key={index} className="flex items-start">
+                          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-blue-100 dark:bg-blue-900 rounded-full mr-3">
+                            <span className="text-blue-600 dark:text-blue-300 font-bold">{index + 1}</span>
+                          </div>
+                          <p className="text-gray-700 dark:text-gray-300">{fact}</p>
+                        </div>
+                      ))}
+                      {healthFacts.length > 3 && (
+                        <button 
+                          onClick={() => setShowAllFacts(!showAllFacts)}
+                          className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+                        >
+                          {showAllFacts ? "Show less" : "View more health facts"}
+                        </button>
+                      )}
                     </>
                   ) : (
-                    <div className="col-span-3 text-center p-4">
-                      <p className="text-gray-600 dark:text-gray-400">
-                        Connect your health account to see your weekly summary.
-                      </p>
-                    </div>
+                    <p className="text-gray-600 dark:text-gray-400">Connect your health account to see interesting health facts.</p>
                   )}
                 </div>
               </div>
-            </>
-          )}
-        </div>
+            </div>
 
-        {/* Floating Action Button */}
-        <div className="fixed bottom-8 right-8 z-50">
-          <div className="relative">
-            {/* Add Metric Button */}
-            <button
-              onClick={() => setIsAddMenuOpen(!isAddMenuOpen)}
-              className="w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 transform hover:scale-110"
-              aria-label="Add health metric"
-            >
-              <FaPlus className="text-xl" />
-            </button>
-
-            {/* Dropdown Menu */}
-            {isAddMenuOpen && (
-              <div className="absolute bottom-16 right-0 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <button
-                  onClick={() => handleAddMetric("steps")}
-                  className="w-full px-4 py-2 text-left text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
-                >
-                  <FaWalking className="mr-2" /> Steps
-                </button>
-                <button
-                  onClick={() => handleAddMetric("sleep")}
-                  className="w-full px-4 py-2 text-left text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
-                >
-                  <FaBed className="mr-2" /> Sleep
-                </button>
-                <button
-                  onClick={() => handleAddMetric("heartRate")}
-                  className="w-full px-4 py-2 text-left text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
-                >
-                  <FaHeartbeat className="mr-2" /> Heart Rate
-                </button>
-                <button
-                  onClick={() => handleAddMetric("weight")}
-                  className="w-full px-4 py-2 text-left text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
-                >
-                  <FaWeight className="mr-2" /> Weight
-                </button>
-                <button
-                  onClick={() => handleAddMetric("calories")}
-                  className="w-full px-4 py-2 text-left text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
-                >
-                  <FaAppleAlt className="mr-2" /> Calories
-                </button>
-                <button
-                  onClick={() => handleAddMetric("activeMinutes")}
-                  className="w-full px-4 py-2 text-left text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
-                >
-                  <FaRunning className="mr-2" /> Active Minutes
-                </button>
-              </div>
-            )}
-
-            {/* Metric Input Modal */}
-            {selectedMetric && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-96">
-                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
-                    Add {selectedMetric.charAt(0).toUpperCase() + selectedMetric.slice(1)}
-                  </h3>
-                  <input
-                    type="number"
-                    value={metricValue}
-                    onChange={(e) => setMetricValue(e.target.value)}
-                    placeholder={`Enter ${selectedMetric} value`}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                  />
-                  <div className="mt-4 flex justify-end space-x-2">
-                    <button
-                      onClick={() => {
-                        setSelectedMetric(null)
-                        setMetricValue("")
-                      }}
-                      className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleSubmitMetric}
-                      disabled={isSubmitting || !metricValue}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isSubmitting ? "Adding..." : "Add"}
-                    </button>
+            {/* Weekly Summary */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-4">Weekly Summary</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {weeklySummary ? (
+                  <>
+                    <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                      <h3 className="font-medium text-gray-800 dark:text-white mb-2">Active minutes</h3>
+                      <p className="text-gray-600 dark:text-gray-300">
+                        {weeklySummary?.summary?.[0] || "Analyzing your activity trends..."}
+                      </p>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                      <h3 className="font-medium text-gray-800 dark:text-white mb-2">Sleep Analysis</h3>
+                      <p className="text-gray-600 dark:text-gray-300">
+                        {weeklySummary?.summary?.[1] || "Analyzing your sleep patterns..."}
+                      </p>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                      <h3 className="font-medium text-gray-800 dark:text-white mb-2">Heart Health</h3>
+                      <p className="text-gray-600 dark:text-gray-300">
+                        {weeklySummary?.summary?.[2] || "Analyzing your heart health..."}
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="col-span-3 text-center p-4">
+                    <p className="text-gray-600 dark:text-gray-400">
+                      Connect your health account to see your weekly summary.
+                    </p>
                   </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Floating Action Button */}
+      <div className="fixed bottom-8 right-8 z-50">
+        <div className="relative">
+          {/* Add Metric Button */}
+          <button
+            onClick={() => setIsAddMenuOpen(!isAddMenuOpen)}
+            className="w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 transform hover:scale-110"
+            aria-label="Add health metric"
+          >
+            <FaPlus className="text-xl" />
+          </button>
+
+          {/* Dropdown Menu */}
+          {isAddMenuOpen && (
+            <div className="absolute bottom-16 right-0 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <button
+                onClick={() => handleAddMetric("steps")}
+                className="w-full px-4 py-2 text-left text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
+              >
+                <FaWalking className="mr-2" /> Steps
+              </button>
+              <button
+                onClick={() => handleAddMetric("sleep")}
+                className="w-full px-4 py-2 text-left text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
+              >
+                <FaBed className="mr-2" /> Sleep
+              </button>
+              <button
+                onClick={() => handleAddMetric("heartRate")}
+                className="w-full px-4 py-2 text-left text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
+              >
+                <FaHeartbeat className="mr-2" /> Heart Rate
+              </button>
+              <button
+                onClick={() => handleAddMetric("weight")}
+                className="w-full px-4 py-2 text-left text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
+              >
+                <FaWeight className="mr-2" /> Weight
+              </button>
+              <button
+                onClick={() => handleAddMetric("calories")}
+                className="w-full px-4 py-2 text-left text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
+              >
+                <FaAppleAlt className="mr-2" /> Calories
+              </button>
+              <button
+                onClick={() => handleAddMetric("activeMinutes")}
+                className="w-full px-4 py-2 text-left text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
+              >
+                <FaRunning className="mr-2" /> Active Minutes
+              </button>
+            </div>
+          )}
+
+          {/* Metric Input Modal */}
+          {selectedMetric && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-96">
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+                  Add {selectedMetric.charAt(0).toUpperCase() + selectedMetric.slice(1)}
+                </h3>
+                <input
+                  type="number"
+                  value={metricValue}
+                  onChange={(e) => setMetricValue(e.target.value)}
+                  placeholder={`Enter ${selectedMetric} value`}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                />
+                <div className="mt-4 flex justify-end space-x-2">
+                  <button
+                    onClick={() => {
+                      setSelectedMetric(null)
+                      setMetricValue("")
+                    }}
+                    className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSubmitMetric}
+                    disabled={isSubmitting || !metricValue}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSubmitting ? "Adding..." : "Add"}
+                  </button>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
-      </main>
+      </div>
     </div>
   )
 }
