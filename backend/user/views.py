@@ -151,7 +151,69 @@ def HealthFacts(request):
         return {
             "general": "An error occurred while generating recommendations."
         } 
-    
+
+@api_view(["POST"])
+def explain_health_metrics(request):
+    try:
+        user_input = request.data.get('message', '')  # Get the user's natural language input
+        
+        # Common terms mapping to help identify metrics
+        common_terms = {
+            'sys': 'blood_pressure_systolic',
+            'systolic': 'blood_pressure_systolic',
+            'dia': 'blood_pressure_diastolic',
+            'diastolic': 'blood_pressure_diastolic',
+            'bp': 'blood_pressure',   
+            'hr': 'heart_rate',
+            'pulse': 'heart_rate',
+            'sugar': 'blood_sugar',
+            'glucose': 'blood_sugar',
+            'temp': 'body_temperature',
+            'temperature': 'body_temperature',
+            'oxygen': 'oxygen_saturation',
+            'o2': 'oxygen_saturation',
+            'spo2': 'oxygen_saturation',
+            'breathing': 'respiratory_rate',
+            'breath': 'respiratory_rate'
+        }
+
+        # Extract numbers and their context from user input
+        prompt = f"""As a friendly health advisor, I need help with the following:
+
+        User's input: "{user_input}"
+        Please provide:
+        1. Explain what each measurement or siunit means in simple terms (Very important)
+        2. Whether this/these number(s) is/are within normal range(s) (Very important)
+        3. What this/these number(s) suggest about their health
+        4. Simple lifestyle recommendations if needed
+        5. Clear advice on whether they should consult a healthcare provider
+        
+        Make the response conversational and easy to understand, as if you're explaining to a friend.
+        If any terms are medical or technical, please explain them in parentheses.
+
+        """
+
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        response = model.generate_content(prompt)
+        
+        explanation = response.text.strip() if response.text else "I couldn't understand your question. Please try rephrasing your question."
+
+        # Add a note about medical advice
+        disclaimer = ("\n\nPlease note: This is for informational purposes only and not a substitute for "
+                     "professional medical advice. Always consult with a healthcare provider for proper diagnosis and treatment.")
+
+        return Response({
+            "explanation": explanation + disclaimer,
+            "understood_metrics": common_terms  # Send back the terms we understand for frontend help
+        })
+
+    except Exception as e:
+        logger.error(f"Error in explain_health_metrics: {e}")
+        return Response({
+            "error": "I couldn't process your question. Please try rephrasing it.",
+            "details": str(e)
+        }, status=500)
+
     
 @api_view(["POST"])
 def signup_view(request):
