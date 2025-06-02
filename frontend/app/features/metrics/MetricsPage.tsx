@@ -27,12 +27,72 @@ import { LineChart } from "../../../components/ui/LineChart"
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
 
 interface MetricsData {
-  steps: any
-  heartRate: any
-  sleep: any
-  weight: any
-  calories: any
-  activeMinutes: any
+  steps: {
+    labels: string[];
+    datasets: {
+      label: string;
+      data: number[];
+      fill?: boolean;
+      backgroundColor?: string;
+      borderColor?: string;
+      tension?: number;
+    }[];
+  };
+  heartRate: {
+    labels: string[];
+    datasets: {
+      label: string;
+      data: number[];
+      fill?: boolean;
+      backgroundColor?: string;
+      borderColor?: string;
+      tension?: number;
+    }[];
+  };
+  sleep: {
+    labels: string[];
+    datasets: {
+      label: string;
+      data: number[];
+      fill?: boolean;
+      backgroundColor?: string;
+      borderColor?: string;
+      tension?: number;
+    }[];
+  };
+  weight: {
+    labels: string[];
+    datasets: {
+      label: string;
+      data: number[];
+      fill?: boolean;
+      backgroundColor?: string;
+      borderColor?: string;
+      tension?: number;
+    }[];
+  };
+  calories: {
+    labels: string[];
+    datasets: {
+      label: string;
+      data: number[];
+      fill?: boolean;
+      backgroundColor?: string;
+      borderColor?: string;
+      tension?: number;
+    }[];
+  };
+  activeMinutes: {
+    labels: string[];
+    datasets: {
+      label: string;
+      data: number[];
+      fill?: boolean;
+      backgroundColor?: string;
+      borderColor?: string;
+      tension?: number;
+    }[];
+  };
 }
 
 const Metrics: React.FC = () => {
@@ -44,7 +104,7 @@ const Metrics: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isAiOnline, setIsAiOnline] = useState(false)
-  const [metrics, setMetrics] = useState<any>(null)
+  const [metrics, setMetrics] = useState<MetricsData | null>(null)
   const [aiTips, setAiTips] = useState<string[]>([])
   const [correlationInsights, setCorrelationInsights] = useState<string[]>([])
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false)
@@ -346,7 +406,7 @@ const Metrics: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(metrics).map(([key, value]) => (
+              {metrics && Object.entries(metrics).map(([key, value]) => (
                 <Card key={key} className="p-4">
                   <h2 className="text-xl font-semibold mb-2">{key}</h2>
                   <LineChart data={value} />

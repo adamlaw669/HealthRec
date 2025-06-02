@@ -1,7 +1,19 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Line } from "react-chartjs-2"
+import { Line, Bar } from "react-chartjs-2"
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+} from "chart.js"
 import Sidebar from "../../components/Sidebar"
 import { useSidebar } from "../../context/SidebarContext"
 import { FaMoon, FaSun, FaArrowLeft, FaBrain, FaInfoCircle } from "react-icons/fa"
@@ -9,6 +21,19 @@ import { getInitialTheme, toggleTheme } from "../../utils/theme-utils"
 import { useNavigate } from "react-router-dom"
 import { Card } from "../../../components/ui/card"
 import { LineChart } from "../../../components/ui/LineChart"
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+)
 
 const ActiveMinutesMetric = () => {
   const navigate = useNavigate()
