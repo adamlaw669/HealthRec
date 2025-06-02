@@ -361,19 +361,27 @@ export const healthAPI = {
     try {
       const userData = localStorage.getItem("user");
       if (!userData) {
-        throw new Error("No user data found in localStorage");
+        throw new Error("User not logged in");
       }
       const { username } = JSON.parse(userData);
-      const response = await apiClient.post(`/get_health_recommendation`, { username });
+      const response = await apiClient.post("/get_health_recommendation", { username });
       return response.data;
-    } catch (error: any) {
-      console.error("Recommendation API error:", error.response?.data || error);
-      if (error.response?.status === 401) {
-        throw new Error("Please log in to get personalized recommendations");
-      }
-      throw new Error(
-        error.response?.data?.message || "Unable to generate recommendations"
-      );
+    } catch (error) {
+      console.error("Error fetching health recommendations:", error);
+      return {
+        recommendations: {
+          general: {
+            summary: "Unable to fetch recommendations. Please try again later.",
+            insights: [
+              "Make sure you have granted all necessary permissions.",
+              "Try refreshing the page.",
+              "Check your internet connection and try again.",
+              "Contact support if the issue persists."
+            ]
+          },
+          correlation: []
+        }
+      };
     }
   },
 
@@ -411,13 +419,14 @@ export const healthAPI = {
     try {
       const userData = localStorage.getItem("user");
       if (!userData) {
-        throw new Error("No user data found in localStorage");
+        throw new Error("User not logged in");
       }
       const { username } = JSON.parse(userData);
       const response = await apiClient.get(`/step_data?username=${username}`);
       return response.data;
-    } catch (error: unknown) {
-      throw handleError(error);
+    } catch (error) {
+      console.error("Error fetching step data:", error);
+      return { labels: [], values: [] };
     }
   },
 
@@ -425,13 +434,14 @@ export const healthAPI = {
     try {
       const userData = localStorage.getItem("user");
       if (!userData) {
-        throw new Error("No user data found in localStorage");
+        throw new Error("User not logged in");
       }
       const { username } = JSON.parse(userData);
       const response = await apiClient.get(`/sleep_data?username=${username}`);
       return response.data;
-    } catch (error: unknown) {
-      throw handleError(error);
+    } catch (error) {
+      console.error("Error fetching sleep data:", error);
+      return { labels: [], values: [] };
     }
   },
 
@@ -439,13 +449,14 @@ export const healthAPI = {
     try {
       const userData = localStorage.getItem("user");
       if (!userData) {
-        throw new Error("No user data found in localStorage");
+        throw new Error("User not logged in");
       }
       const { username } = JSON.parse(userData);
       const response = await apiClient.get(`/heart_data?username=${username}`);
       return response.data;
-    } catch (error: unknown) {
-      throw handleError(error);
+    } catch (error) {
+      console.error("Error fetching heart rate data:", error);
+      return { labels: [], values: [] };
     }
   },
 
@@ -453,13 +464,14 @@ export const healthAPI = {
     try {
       const userData = localStorage.getItem("user");
       if (!userData) {
-        throw new Error("No user data found in localStorage");
+        throw new Error("User not logged in");
       }
       const { username } = JSON.parse(userData);
       const response = await apiClient.get(`/weight_data?username=${username}`);
       return response.data;
-    } catch (error: unknown) {
-      throw handleError(error);
+    } catch (error) {
+      console.error("Error fetching weight data:", error);
+      return { labels: [], values: [] };
     }
   },
 
@@ -467,13 +479,14 @@ export const healthAPI = {
     try {
       const userData = localStorage.getItem("user");
       if (!userData) {
-        throw new Error("No user data found in localStorage");
+        throw new Error("User not logged in");
       }
       const { username } = JSON.parse(userData);
       const response = await apiClient.get(`/calories_data?username=${username}`);
       return response.data;
-    } catch (error: unknown) {
-      throw handleError(error);
+    } catch (error) {
+      console.error("Error fetching calories data:", error);
+      return { labels: [], values: [] };
     }
   },
 
@@ -481,13 +494,14 @@ export const healthAPI = {
     try {
       const userData = localStorage.getItem("user");
       if (!userData) {
-        throw new Error("No user data found in localStorage");
+        throw new Error("User not logged in");
       }
       const { username } = JSON.parse(userData);
       const response = await apiClient.get(`/activity_data?username=${username}`);
       return response.data;
-    } catch (error: unknown) {
-      throw handleError(error);
+    } catch (error) {
+      console.error("Error fetching activity data:", error);
+      return { labels: [], values: [] };
     }
   },
 
@@ -563,32 +577,45 @@ export const healthAPI = {
     try {
       const userData = localStorage.getItem("user");
       if (!userData) {
-        throw new Error("No user data found in localStorage");
+        throw new Error("User not logged in");
       }
       const { username } = JSON.parse(userData);
-      const response = await apiClient.post("/weekly_summary", { username });
+      const response = await apiClient.post("/get_weekly_summary", { username });
       return response.data;
-    } catch (error: unknown) {
-      throw handleError(error);
+    } catch (error) {
+      console.error("Error fetching weekly summary:", error);
+      return {
+        summary: ["No data available", "No data available", "No data available"],
+        trends: {
+          steps: 0,
+          sleep: 0,
+          heart_rate: 0,
+          weight: 0,
+          calories: 0,
+          active_minutes: 0
+        },
+        status: "error"
+      };
     }
   },
 
   // Add a new metric
-  addMetric: async (metric: string, value: number) => {
+  addMetric: async (metricType: string, value: number) => {
     try {
       const userData = localStorage.getItem("user");
       if (!userData) {
-        throw new Error("No user data found in localStorage");
+        throw new Error("User not logged in");
       }
       const { username } = JSON.parse(userData);
       const response = await apiClient.post("/add_metric", {
         username,
-        metric,
-        value,
+        metric_type: metricType,
+        value
       });
       return response.data;
-    } catch (error: unknown) {
-      throw handleError(error);
+    } catch (error) {
+      console.error("Error adding metric:", error);
+      throw error;
     }
   },
 
