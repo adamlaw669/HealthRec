@@ -423,6 +423,7 @@ export const healthAPI = {
       }
       const { username } = JSON.parse(userData);
       const response = await apiClient.get(`/step_data?username=${username}`);
+      console.log("Step data response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error fetching step data:", error);

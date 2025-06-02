@@ -124,7 +124,8 @@ const Metrics: React.FC = () => {
   // Fetch metrics data
   useEffect(() => {
     const fetchMetricsData = async () => {
-      setIsLoading(true)
+      setIsLoading(true);
+      setError(null);
       try {
         const [stepsData, heartRateData, sleepData, weightData, caloriesData, activityData] = await Promise.all([
           healthAPI.getStepData(),
@@ -325,7 +326,7 @@ const Metrics: React.FC = () => {
               }]
             }
           };
-
+          
           setMetrics(newMetrics);
         } catch (err) {
           console.error("Failed to fetch metrics data:", err)
@@ -341,21 +342,7 @@ const Metrics: React.FC = () => {
       setIsSubmitting(false)
     }
   }
-
-  useEffect(() => {
-    const fetchMetrics = async () => {
-      try {
-        const data = await healthAPI.getHealthData();
-        setMetrics(data);
-        setIsLoading(false);
-      } catch (error) {
-        setError("Failed to load metrics");
-        setIsLoading(false);
-      }
-    };
-
-    fetchMetrics();
-  }, []);
+  console.log("metrics:", metrics)
 
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>{error}</div>;
