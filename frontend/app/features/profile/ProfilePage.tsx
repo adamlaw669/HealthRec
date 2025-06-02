@@ -9,10 +9,16 @@ import { useSidebar } from "../../context/SidebarContext"
 //import { useUser } from "../../context/UserContext"
 import { getInitialTheme, toggleTheme } from "../../utils/theme-utils"
 
+interface Profile {
+  name: string;
+  email: string;
+  profilePicture?: string;
+}
+
 export default function ProfilePage() {
   const { isSidebarOpen } = useSidebar()
   const navigate = useNavigate()
-  const [user, setUser] = useState({ email: "", name: "", profilePicture: "" })
+  const [user, setUser] = useState<Profile>({ email: "", name: "", profilePicture: "" })
   const [isLoading, setIsLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({ name: "" })

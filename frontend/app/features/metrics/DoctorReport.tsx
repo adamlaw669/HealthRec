@@ -14,6 +14,7 @@ const DoctorReport: React.FC<DoctorReportProps> = ({ onClose }) => {
   const [isSuccess, setIsSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [customNotes, setCustomNotes] = useState("")
+  const [report, setReport] = useState(null)
 
   const handleMetricToggle = (metric: string) => {
     if (selectedMetrics.includes(metric)) {
@@ -23,13 +24,26 @@ const DoctorReport: React.FC<DoctorReportProps> = ({ onClose }) => {
     }
   }
 
+  const handleGenerateReport = async () => {
+    try {
+      const response = await healthAPI.getDoctorReport(
+        email,
+        selectedMetrics,
+        customNotes
+      );
+      setReport(response);
+    } catch (error) {
+      console.error("Error generating report:", error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
 
     try {
-      await healthAPI.generateDoctorReport(email, selectedMetrics, customNotes)
+      await handleGenerateReport()
       setIsSuccess(true)
     } catch (err) {
       setError(typeof err === "string" ? err : "Failed to generate report. Please try again.")

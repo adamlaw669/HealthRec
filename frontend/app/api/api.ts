@@ -1,5 +1,4 @@
 import axios from "axios";
-import { HealthInterpreter } from "components/ui/HealthInterpreter";
 
 // Development API URL
 const DEV_API_URL = "https://healthrec.onrender.com" // Production backend URL
