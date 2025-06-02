@@ -2,13 +2,13 @@ import axios from "axios";
 import { HealthInterpreter } from "components/ui/HealthInterpreter";
 
 // Development API URL
-const DEV_API_URL = "http://127.0.0.1:8000" // this is for Django connection
-// const DEV_API_URL = "https://healthrec.onrender.com/"; // this is for the mock server
+const DEV_API_URL = "https://healthrec.onrender.com" // Production backend URL
+// const DEV_API_URL = "http://127.0.0.1:8000" // Local development URL
 
 // Use environment variable in production, fallback to development URL
 const API_BASE_URL =
   import.meta.env.MODE === "production"
-    ? import.meta.env.VITE_API_URL
+    ? import.meta.env.VITE_API_URL || DEV_API_URL
     : DEV_API_URL;
 
 // Create axios instance with default config
