@@ -135,12 +135,13 @@ const Metrics: React.FC = () => {
           healthAPI.getActivityData()
         ]);
 
-        setMetrics({
+        // Initialize with empty arrays if data is undefined
+        const newMetrics: MetricsData = {
           steps: {
-            labels: stepsData.labels,
+            labels: stepsData?.labels || [],
             datasets: [{
               label: "Steps",
-              data: stepsData.values,
+              data: stepsData?.values || [],
               fill: true,
               backgroundColor: 'rgba(30, 58, 138, 0.1)',
               borderColor: "#1e3a8a",
@@ -148,10 +149,10 @@ const Metrics: React.FC = () => {
             }]
           },
           heartRate: {
-            labels: heartRateData.labels,
+            labels: heartRateData?.labels || [],
             datasets: [{
               label: "Heart Rate",
-              data: heartRateData.values,
+              data: heartRateData?.values || [],
               fill: true,
               backgroundColor: 'rgba(239, 68, 68, 0.1)',
               borderColor: "#ef4444",
@@ -159,10 +160,10 @@ const Metrics: React.FC = () => {
             }]
           },
           sleep: {
-            labels: sleepData.labels,
+            labels: sleepData?.labels || [],
             datasets: [{
               label: "Sleep",
-              data: sleepData.values,
+              data: sleepData?.values || [],
               fill: true,
               backgroundColor: 'rgba(99, 102, 241, 0.1)',
               borderColor: "#6366f1",
@@ -170,10 +171,10 @@ const Metrics: React.FC = () => {
             }]
           },
           weight: {
-            labels: weightData.labels,
+            labels: weightData?.labels || [],
             datasets: [{
               label: "Weight",
-              data: weightData.values,
+              data: weightData?.values || [],
               fill: true,
               backgroundColor: 'rgba(34, 197, 94, 0.1)',
               borderColor: "#22c55e",
@@ -181,10 +182,10 @@ const Metrics: React.FC = () => {
             }]
           },
           calories: {
-            labels: caloriesData.labels,
+            labels: caloriesData?.labels || [],
             datasets: [{
               label: "Calories",
-              data: caloriesData.values,
+              data: caloriesData?.values || [],
               fill: true,
               backgroundColor: 'rgba(249, 115, 22, 0.1)',
               borderColor: "#f97316",
@@ -192,26 +193,35 @@ const Metrics: React.FC = () => {
             }]
           },
           activeMinutes: {
-            labels: activityData.labels,
+            labels: activityData?.labels || [],
             datasets: [{
               label: "Active Minutes",
-              data: activityData.values,
+              data: activityData?.values || [],
               fill: true,
               backgroundColor: 'rgba(168, 85, 247, 0.1)',
               borderColor: "#a855f7",
               tension: 0.3,
             }]
           }
-        });
+        };
+
+        setMetrics(newMetrics);
 
         // Fetch AI tips
-        const tips = await healthAPI.getHealthRecommendation();
-        setAiTips(tips.recommendations.general.insights);
-        setCorrelationInsights(tips.recommendations.correlation);
+        try {
+          const tips = await healthAPI.getHealthRecommendation();
+          setAiTips(tips?.recommendations?.general?.insights || []);
+          setCorrelationInsights(tips?.recommendations?.correlation || []);
+        } catch (error) {
+          console.error("Error fetching AI tips:", error);
+          setAiTips([]);
+          setCorrelationInsights([]);
+        }
 
       } catch (error) {
         console.error("Error fetching metrics data:", error);
         setError("Failed to load metrics data. Please try again later.");
+        setMetrics(null);
       } finally {
         setIsLoading(false);
       }
@@ -238,7 +248,85 @@ const Metrics: React.FC = () => {
         setIsLoading(true)
         setError(null)
         try {
-          // ... existing fetchMetricsData code ...
+          const [stepsData, heartRateData, sleepData, weightData, caloriesData, activityData] = await Promise.all([
+            healthAPI.getStepData(),
+            healthAPI.getHeartRateData(),
+            healthAPI.getSleepData(),
+            healthAPI.getWeightData(),
+            healthAPI.getCaloriesData(),
+            healthAPI.getActivityData()
+          ]);
+
+          const newMetrics: MetricsData = {
+            steps: {
+              labels: stepsData?.labels || [],
+              datasets: [{
+                label: "Steps",
+                data: stepsData?.values || [],
+                fill: true,
+                backgroundColor: 'rgba(30, 58, 138, 0.1)',
+                borderColor: "#1e3a8a",
+                tension: 0.3,
+              }]
+            },
+            heartRate: {
+              labels: heartRateData?.labels || [],
+              datasets: [{
+                label: "Heart Rate",
+                data: heartRateData?.values || [],
+                fill: true,
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                borderColor: "#ef4444",
+                tension: 0.3,
+              }]
+            },
+            sleep: {
+              labels: sleepData?.labels || [],
+              datasets: [{
+                label: "Sleep",
+                data: sleepData?.values || [],
+                fill: true,
+                backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                borderColor: "#6366f1",
+                tension: 0.3,
+              }]
+            },
+            weight: {
+              labels: weightData?.labels || [],
+              datasets: [{
+                label: "Weight",
+                data: weightData?.values || [],
+                fill: true,
+                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                borderColor: "#22c55e",
+                tension: 0.3,
+              }]
+            },
+            calories: {
+              labels: caloriesData?.labels || [],
+              datasets: [{
+                label: "Calories",
+                data: caloriesData?.values || [],
+                fill: true,
+                backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                borderColor: "#f97316",
+                tension: 0.3,
+              }]
+            },
+            activeMinutes: {
+              labels: activityData?.labels || [],
+              datasets: [{
+                label: "Active Minutes",
+                data: activityData?.values || [],
+                fill: true,
+                backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                borderColor: "#a855f7",
+                tension: 0.3,
+              }]
+            }
+          };
+
+          setMetrics(newMetrics);
         } catch (err) {
           console.error("Failed to fetch metrics data:", err)
           setError("Failed to load metrics data. Please try again later.")
