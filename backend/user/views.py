@@ -16,10 +16,10 @@ from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.middleware.csrf import get_token
-import google.generativeai as genai
-from googleapiclient.discovery import build
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
+#import google.generativeai as genai
+#from googleapiclient.discovery import build
+#from google.oauth2 import id_token
+#from google.auth.transport import requests as google_requests
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.response import Response
@@ -32,7 +32,7 @@ from .utils import *
 logger = logging.getLogger(__name__)
 
 openai.api_key = settings.OPENAI_API_KEY
-genai.configure(api_key="AIzaSyCQh37XW3rvi6A37orv7zAs25gT2xcjIes")
+#genai.configure(api_key="AIzaSyCQh37XW3rvi6A37orv7zAs25gT2xcjIes")
 
 def index(request):
     user = request.user
