@@ -19,8 +19,6 @@ import { useSidebar } from "../../context/SidebarContext"
 import { FaMoon, FaSun, FaArrowLeft, FaBrain, FaInfoCircle } from "react-icons/fa"
 import { getInitialTheme, toggleTheme } from "../../utils/theme-utils"
 import { useNavigate } from "react-router-dom"
-import { Card } from "../../../components/ui/card"
-import { LineChart } from "../../../components/ui/LineChart"
 
 // Register Chart.js components
 ChartJS.register(

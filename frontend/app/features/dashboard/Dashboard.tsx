@@ -403,7 +403,7 @@ export default function Dashboard() {
 
         {/* Health Interpreter Section */}
         <div className="mt-8">
-          <HealthInterpreter />
+          <HealthInterpreter insights={aiRecommendations.insights} isLoading={isLoading} />
         </div>
 
         {isLoading ? (

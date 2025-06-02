@@ -18,7 +18,6 @@ import { FaMoon, FaSun, FaBrain, FaWalking, FaHeartbeat, FaInfoCircle, FaPlus, F
 import DoctorReport from "./DoctorReport"
 import { getInitialTheme, toggleTheme } from "../../utils/theme-utils"
 import { healthAPI } from "../../api/api"
-import { useNavigate } from "react-router-dom"
 import AIStatus from "../../components/AIStatus"
 import { Card } from "../../../components/ui/card"
 import { LineChart } from "../../../components/ui/LineChart"
@@ -96,14 +95,13 @@ interface MetricsData {
 }
 
 const Metrics: React.FC = () => {
-  const navigate = useNavigate()
   const { isSidebarOpen } = useSidebar()
   const [showDoctorReport, setShowDoctorReport] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
   const [timeRange, setTimeRange] = useState("week")
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [isAiOnline, setIsAiOnline] = useState(false)
+  const [isAiOnline] = useState(false)
   const [metrics, setMetrics] = useState<MetricsData | null>(null)
   const [aiTips, setAiTips] = useState<string[]>([])
   const [correlationInsights, setCorrelationInsights] = useState<string[]>([])
@@ -206,12 +204,8 @@ const Metrics: React.FC = () => {
           }
         });
 
-        // Fetch AI tips and correlation insights
-        const [tips, insights] = await Promise.all([
-          healthAPI.getHealthRecommendation(),
-          healthAPI.getHealthFacts()
-        ]);
-
+        // Fetch AI tips
+        const tips = await healthAPI.getHealthRecommendation();
         setAiTips(tips.recommendations.general.insights);
         setCorrelationInsights(tips.recommendations.correlation);
 
@@ -225,35 +219,6 @@ const Metrics: React.FC = () => {
 
     fetchMetricsData();
   }, [timeRange]);
-
-  const chartOptions = {
-    responsive: true,
-    plugins: {
-      legend: {
-        labels: {
-          color: darkMode ? "#f3f4f6" : "#1f2937"
-        }
-      }
-    },
-    scales: {
-      y: {
-        grid: {
-          color: darkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)",
-        },
-        ticks: {
-          color: darkMode ? "#f3f4f6" : "#1f2937"
-        }
-      },
-      x: {
-        grid: {
-          color: darkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)",
-        },
-        ticks: {
-          color: darkMode ? "#f3f4f6" : "#1f2937"
-        }
-      }
-    }
-  }
 
   const handleAddMetric = async (metric: string) => {
     setSelectedMetric(metric)

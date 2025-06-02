@@ -15,6 +15,12 @@ interface Profile {
   profilePicture?: string;
 }
 
+interface ProfileData {
+  name: string;
+  email: string;
+  profilePicture?: string;
+}
+
 export default function ProfilePage() {
   const { isSidebarOpen } = useSidebar()
   const navigate = useNavigate()
@@ -47,7 +53,7 @@ export default function ProfilePage() {
     const fetchUser = async () => {
       setIsLoading(true)
       try {
-        const data = await authAPI.getProfile()
+        const data = await authAPI.getProfile() as ProfileData
         if (data) {
           setUser({
             email: data.email || "",

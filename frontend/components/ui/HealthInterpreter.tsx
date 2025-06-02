@@ -1,62 +1,46 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button } from './button';
-import { Input } from './input';
-import { Card } from './card';
-import { FaChevronDown, FaChevronUp, FaTimes, FaHistory, FaInfoCircle } from 'react-icons/fa';
-import { healthAPI } from "../../app/api/api";
+import { FaBrain } from 'react-icons/fa';
 
-interface HealthResponse {
-  title: string;
-  content: string;
+interface HealthInterpreterProps {
+  insights: string[];
+  isLoading?: boolean;
 }
 
-interface ParsedResponse {
-  measurements: HealthResponse;
-  normalRanges: HealthResponse;
-  implications: HealthResponse;
-  recommendations: HealthResponse;
-  medicalAdvice: HealthResponse;
-}
+export const HealthInterpreter: React.FC<HealthInterpreterProps> = ({ insights, isLoading = false }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
 
-export const HealthInterpreter = () => {
-  const [message, setMessage] = useState("");
-  const [response, setResponse] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    try {
-      const result = await healthAPI.explainHealthMetric(message);
-      setResponse(result.explanation);
-    } catch (error) {
-      console.error("Error:", error);
-      setResponse("Sorry, I couldn't process your request.");
-    }
-    setIsLoading(false);
-  };
+  if (isLoading) {
+    return (
+      <div className="animate-pulse bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full max-w-2xl mx-auto p-4">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          type="text"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Ask about your health metrics..."
-          className="w-full"
-        />
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? "Processing..." : "Get Explanation"}
-        </Button>
-      </form>
-      {response && (
-        <div className="mt-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
-          <p className="text-gray-800 dark:text-gray-200">{response}</p>
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center">
+          <FaBrain className="text-blue-500 mr-2" />
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-white">AI Health Insights</h3>
         </div>
-      )}
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+        >
+          {isExpanded ? 'Show Less' : 'Show More'}
+        </button>
+      </div>
+      <div className={`space-y-2 ${isExpanded ? '' : 'max-h-20 overflow-hidden'}`}>
+        {insights.map((insight, index) => (
+          <p key={index} className="text-gray-600 dark:text-gray-300 text-sm">
+            {insight}
+          </p>
+        ))}
+      </div>
     </div>
   );
 };
