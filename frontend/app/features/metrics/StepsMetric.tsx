@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Line, Bar } from "react-chartjs-2"
 import Sidebar from "../../components/Sidebar"
 import { useSidebar } from "../../context/SidebarContext"
-//import { healthAPI } from "../../api/api"
+import { healthAPI } from "../../api/api"
 import { FaMoon, FaSun, FaArrowLeft, FaBrain, FaInfoCircle } from "react-icons/fa"
 import { getInitialTheme, toggleTheme } from "../../utils/theme-utils"
 import { useNavigate } from "react-router-dom"
@@ -32,18 +32,12 @@ const StepsMetric = () => {
     const fetchStepData = async () => {
       setIsLoading(true)
       try {
-        const response = await fetch("http://127.0.0.1:8000/health_data", {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        })
-        const result = await response.json()
-        const validEntries = result.filter((entry: any) => entry.steps != null)
-        const labels = validEntries.map((entry: any) => new Date(entry.date).toLocaleDateString())
-        const stepsValues = validEntries.map((entry: any) => entry.steps)
+        const result = await healthAPI.getStepData()
         setChartData({
-          labels,
+          labels: result.labels,
           datasets: [{
             label: "Steps",
-            data: stepsValues,
+            data: result.values,
             fill: false,
             borderColor: "#4F46E5",
             backgroundColor: "rgba(79, 70, 229, 0.1)",

@@ -410,7 +410,12 @@ export const healthAPI = {
 
   getStepData: async () => {
     try {
-      const response = await apiClient.get("/step_data");
+      const userData = localStorage.getItem("user");
+      if (!userData) {
+        throw new Error("No user data found in localStorage");
+      }
+      const { username } = JSON.parse(userData);
+      const response = await apiClient.get(`/step_data?username=${username}`);
       return response.data;
     } catch (error: unknown) {
       throw handleError(error);
@@ -433,7 +438,12 @@ export const healthAPI = {
 
   getHeartRateData: async () => {
     try {
-      const response = await apiClient.get("/heart_data");
+      const userData = localStorage.getItem("user");
+      if (!userData) {
+        throw new Error("No user data found in localStorage");
+      }
+      const { username } = JSON.parse(userData);
+      const response = await apiClient.get(`/heart_data?username=${username}`);
       return response.data;
     } catch (error: unknown) {
       throw handleError(error);
@@ -442,7 +452,12 @@ export const healthAPI = {
 
   getWeightData: async () => {
     try {
-      const response = await apiClient.get("/weight_data");
+      const userData = localStorage.getItem("user");
+      if (!userData) {
+        throw new Error("No user data found in localStorage");
+      }
+      const { username } = JSON.parse(userData);
+      const response = await apiClient.get(`/weight_data?username=${username}`);
       return response.data;
     } catch (error: unknown) {
       throw handleError(error);
@@ -451,7 +466,12 @@ export const healthAPI = {
 
   getCaloriesData: async () => {
     try {
-      const response = await apiClient.get("/calories_data");
+      const userData = localStorage.getItem("user");
+      if (!userData) {
+        throw new Error("No user data found in localStorage");
+      }
+      const { username } = JSON.parse(userData);
+      const response = await apiClient.get(`/calories_data?username=${username}`);
       return response.data;
     } catch (error: unknown) {
       throw handleError(error);
