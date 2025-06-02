@@ -11,7 +11,7 @@ const API_BASE_URL =
     : DEV_API_URL;
 
 // Create axios instance with default config
-const apiClient = axios.create({
+export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",

@@ -22,6 +22,8 @@ import { getInitialTheme, toggleTheme } from "../../utils/theme-utils"
 import { healthAPI } from "../../api/api"
 import { useNavigate } from "react-router-dom"
 import AIStatus from "../../components/AIStatus"
+import { Card } from "../../../components/ui/card"
+import { LineChart } from "../../../components/ui/LineChart"
 
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
@@ -60,6 +62,7 @@ const Metrics: React.FC = () => {
   const [selectedMetric, setSelectedMetric] = useState<string | null>(null)
   const [metricValue, setMetricValue] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [metrics, setMetrics] = useState<any>(null)
 
   // Initialize theme on component mount
   useEffect(() => {
@@ -238,6 +241,25 @@ const Metrics: React.FC = () => {
     }
   }
 
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      try {
+        const data = await healthAPI.getHealthData();
+        setMetrics(data);
+        setIsLoading(false);
+      } catch (error) {
+        setError("Failed to load metrics");
+        setIsLoading(false);
+      }
+    };
+
+    fetchMetrics();
+  }, []);
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>{error}</div>;
+  if (!metrics) return <div>No metrics available</div>;
+
   return (
     <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900">
       {/* Sidebar Component */}
@@ -335,90 +357,13 @@ const Metrics: React.FC = () => {
               {error}
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Steps Chart */}
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Steps</h2>
-                  <button
-                    onClick={() => navigate("/metrics/steps")}
-                    className="text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    View Details
-                  </button>
-                </div>
-                {metricsData.steps && <Line data={metricsData.steps} options={chartOptions} />}
-              </div>
-
-              {/* Heart Rate Chart */}
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Heart Rate</h2>
-                  <button
-                    onClick={() => navigate("/metrics/heart-rate")}
-                    className="text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    View Details
-                  </button>
-                </div>
-                {metricsData.heartRate && <Line data={metricsData.heartRate} options={chartOptions} />}
-              </div>
-
-              {/* Sleep Chart */}
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Sleep</h2>
-                  <button
-                    onClick={() => navigate("/metrics/sleep")}
-                    className="text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    View Details
-                  </button>
-                </div>
-                {metricsData.sleep && <Line data={metricsData.sleep} options={chartOptions} />}
-              </div>
-
-              {/* Weight Chart */}
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Weight</h2>
-                  <button
-                    onClick={() => navigate("/metrics/weight")}
-                    className="text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    View Details
-                  </button>
-                </div>
-                {metricsData.weight && <Line data={metricsData.weight} options={chartOptions} />}
-              </div>
-
-              {/* Calories Chart */}
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Calories</h2>
-                  <button
-                    onClick={() => navigate("/metrics/calories")}
-                    className="text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    View Details
-                  </button>
-                </div>
-                {metricsData.calories && <Line data={metricsData.calories} options={chartOptions} />}
-              </div>
-
-              {/* Active Minutes Chart */}
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Active Minutes</h2>
-                  <button
-                    onClick={() => navigate("/metrics/active-minutes")}
-                    className="text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    View Details
-                  </button>
-                </div>
-                {metricsData.activeMinutes && <Line data={metricsData.activeMinutes} options={chartOptions} />}
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Object.entries(metrics).map(([key, value]) => (
+                <Card key={key} className="p-4">
+                  <h2 className="text-xl font-semibold mb-2">{key}</h2>
+                  <LineChart data={value} />
+                </Card>
+              ))}
             </div>
           )}
 

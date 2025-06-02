@@ -4,10 +4,11 @@ import { useState, useEffect } from "react"
 import { Line, Bar } from "react-chartjs-2"
 import Sidebar from "../../components/Sidebar"
 import { useSidebar } from "../../context/SidebarContext"
-import { healthAPI } from "../../api/api"
 import { FaMoon, FaSun, FaArrowLeft, FaBrain, FaInfoCircle } from "react-icons/fa"
 import { getInitialTheme, toggleTheme } from "../../utils/theme-utils"
 import { useNavigate } from "react-router-dom"
+import { Card } from "../../../components/ui/card"
+import { LineChart } from "../../../components/ui/LineChart"
 
 const ActiveMinutesMetric = () => {
   const navigate = useNavigate()

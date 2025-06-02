@@ -18,7 +18,7 @@ interface Profile {
 export default function ProfilePage() {
   const { isSidebarOpen } = useSidebar()
   const navigate = useNavigate()
-  const [user, setUser] = useState<Profile>({ email: "", name: "", profilePicture: "" })
+  const [user, setUser] = useState<Profile>({ email: "", name: "" })
   const [isLoading, setIsLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({ name: "" })

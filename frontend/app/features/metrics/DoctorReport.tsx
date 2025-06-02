@@ -7,14 +7,13 @@ interface DoctorReportProps {
   onClose: () => void
 }
 
-const DoctorReport: React.FC<DoctorReportProps> = ({ onClose }) => {
+export const DoctorReport = ({ onClose }: DoctorReportProps) => {
   const [email, setEmail] = useState("")
-  const [selectedMetrics, setSelectedMetrics] = useState<string[]>(["steps", "heart-rate", "sleep", "weight"])
+  const [selectedMetrics, setSelectedMetrics] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [customNotes, setCustomNotes] = useState("")
-  const [report, setReport] = useState(null)
 
   const handleMetricToggle = (metric: string) => {
     if (selectedMetrics.includes(metric)) {
@@ -31,7 +30,6 @@ const DoctorReport: React.FC<DoctorReportProps> = ({ onClose }) => {
         selectedMetrics,
         customNotes
       );
-      setReport(response);
     } catch (error) {
       console.error("Error generating report:", error);
     }
