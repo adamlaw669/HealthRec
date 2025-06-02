@@ -23,7 +23,7 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({ name: "" })
   const [darkMode, setDarkMode] = useState(false)
-  const [downloadFormat, setDownloadFormat] = useState("json")
+  const [downloadFormat, setDownloadFormat] = useState<"json" | "csv">("json")
   const [isDownloading, setIsDownloading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -128,7 +128,7 @@ export default function ProfilePage() {
     try {
       const response = await healthAPI.downloadHealthData(downloadFormat)
       const blob = new Blob([response], { 
-        type: downloadFormat === 'pdf' ? 'application/pdf' : 'application/json' 
+        type: downloadFormat === 'json' ? 'application/json' : 'text/csv'
       })
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
@@ -279,12 +279,11 @@ export default function ProfilePage() {
                 <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3">
                   <select
                     value={downloadFormat}
-                    onChange={(e) => setDownloadFormat(e.target.value)}
+                    onChange={(e) => setDownloadFormat(e.target.value as "json" | "csv")}
                     className="w-full sm:w-auto p-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                   >
                     <option value="json">JSON Format</option>
                     <option value="csv">CSV Format</option>
-                    <option value="pdf">PDF Report</option>
                   </select>
 
                   <button

@@ -25,13 +25,14 @@ export const DoctorReport = ({ onClose }: DoctorReportProps) => {
 
   const handleGenerateReport = async () => {
     try {
-      const response = await healthAPI.getDoctorReport(
+      await healthAPI.getDoctorReport(
         email,
         selectedMetrics,
         customNotes
       );
     } catch (error) {
       console.error("Error generating report:", error);
+      throw error;
     }
   };
 

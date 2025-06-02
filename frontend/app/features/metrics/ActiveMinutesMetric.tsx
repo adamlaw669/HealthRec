@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Line, Bar } from "react-chartjs-2"
+import { Line } from "react-chartjs-2"
 import Sidebar from "../../components/Sidebar"
 import { useSidebar } from "../../context/SidebarContext"
 import { FaMoon, FaSun, FaArrowLeft, FaBrain, FaInfoCircle } from "react-icons/fa"

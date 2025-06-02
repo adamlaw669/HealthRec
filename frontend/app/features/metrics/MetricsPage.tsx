@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Line } from "react-chartjs-2"
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -12,7 +11,6 @@ import {
   Tooltip,
   Legend,
   Filler,
-  ChartData,
 } from "chart.js"
 import Sidebar from "../../components/Sidebar"
 import { useSidebar } from "../../context/SidebarContext"
@@ -28,15 +26,13 @@ import { LineChart } from "../../../components/ui/LineChart"
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
 
-const API_ENDPOINT = "http://127.0.0.1:8000"
-
 interface MetricsData {
-  steps: ChartData<"line"> | null
-  heartRate: ChartData<"line"> | null
-  sleep: ChartData<"line"> | null
-  weight: ChartData<"line"> | null
-  calories: ChartData<"line"> | null
-  activeMinutes: ChartData<"line"> | null
+  steps: any
+  heartRate: any
+  sleep: any
+  weight: any
+  calories: any
+  activeMinutes: any
 }
 
 const Metrics: React.FC = () => {
@@ -48,21 +44,13 @@ const Metrics: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isAiOnline, setIsAiOnline] = useState(false)
-  const [metricsData, setMetricsData] = useState<MetricsData>({
-    steps: null,
-    heartRate: null,
-    sleep: null,
-    weight: null,
-    calories: null,
-    activeMinutes: null
-  })
+  const [metrics, setMetrics] = useState<any>(null)
   const [aiTips, setAiTips] = useState<string[]>([])
   const [correlationInsights, setCorrelationInsights] = useState<string[]>([])
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false)
   const [selectedMetric, setSelectedMetric] = useState<string | null>(null)
   const [metricValue, setMetricValue] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [metrics, setMetrics] = useState<any>(null)
 
   // Initialize theme on component mount
   useEffect(() => {
@@ -89,7 +77,7 @@ const Metrics: React.FC = () => {
           healthAPI.getActivityData()
         ]);
 
-        setMetricsData({
+        setMetrics({
           steps: {
             labels: stepsData.labels,
             datasets: [{
