@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import { Button } from './button';
 import { Input } from './input';
-import { Card } from './card';
-import { FaChevronDown, FaChevronUp, FaTimes, FaHistory, FaInfoCircle } from 'react-icons/fa';
+//import { Card } from './card';
+import { FaChevronDown, FaChevronUp, FaTimes, FaHistory } from 'react-icons/fa';
 import { healthAPI } from "../../app/api/api";
 
 interface HealthResponse {
@@ -27,7 +27,7 @@ export function HealthInterpreter() {
   const [showModal, setShowModal] = useState(false);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [history, setHistory] = useState<Array<{ question: string; response: ParsedResponse }>>([]);
-  const [metricSuggestions, setMetricSuggestions] = useState<Array<{ type: string, example: string }>>([
+  const [metricSuggestions] = useState<Array<{ type: string, example: string }>>([
     { type: 'Blood Pressure', example: 'My blood pressure is 120/80' },
     { type: 'Blood Sugar', example: 'My blood sugar is 108 mg/dL' },
     { type: 'Heart Rate', example: 'My heart rate is 72 bpm' },
@@ -143,9 +143,11 @@ export function HealthInterpreter() {
 
   const handleSuggestionClick = (example: string) => {
     setMessage(example);
-    setShowSuggestions(false);
+    //setShowSuggestions(false);
+    setShowSuggestions(showSuggestions === true ? false : true); 
+    //setExpandedSection(expandedSection === section ? null : section);
   };
-
+/*
   const Section = ({ title, content }: HealthResponse) => (
     <div className="border-b border-gray-200 dark:border-gray-700">
       <button
@@ -162,7 +164,7 @@ export function HealthInterpreter() {
       )}
     </div>
   );
-
+*/
   return (
     <>
       <div className="fixed bottom-24 right-8">
