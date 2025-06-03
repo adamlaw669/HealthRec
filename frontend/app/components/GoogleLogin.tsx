@@ -19,30 +19,24 @@ export default function GoogleLoginComponent() {
           https://www.googleapis.com/auth/fitness.body.read
         `.replace(/\s+/g, ' '),
         ux_mode: 'popup',
-        callback: async (response: google.accounts.oauth2.CodeResponse) => {
+        callback: async (response: any) => {
           if (response.code) {
             try {
-              const data = await authAPI.googleCallback(response.code);
-              
-              if (data.token) {
-                localStorage.setItem('token', data.token);
-                if (data.refresh) {
-                  localStorage.setItem('refresh', data.refresh);
-                }
-                
-                const userData = {
-                  username: data.user.username,
-                  name: data.user.name || data.user.username.split('@')[0],
-                  email: data.user.username
-                };
-                localStorage.setItem('user', JSON.stringify(userData));
-                navigate('/dashboard');
+              const result = await authAPI.googleCallback(response.code);
+              if (result.token && result.user) {
+                localStorage.setItem('token', result.token);
+                localStorage.setItem('user', JSON.stringify(result.user));
+                // Add a small delay to ensure storage is complete
+                setTimeout(() => {
+                  navigate('/dashboard');
+                }, 100);
               } else {
-                throw new Error(data.error || 'Authentication failed');
+                console.error('Invalid response format:', result);
+                alert('Login failed: Invalid response from server');
               }
             } catch (error) {
-              console.error('Google login error:', error);
-              alert(error instanceof Error ? error.message : 'Authentication failed');
+              console.error('Google callback error:', error);
+              alert('Login failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
             }
           }
         },

@@ -27,7 +27,7 @@ export default function ProfilePage() {
   const [user, setUser] = useState<Profile>({
     email: "",
     name: "",
-    profilePicture: "/placeholder.svg?height=200&width=200"
+    profilePicture: "/images/dark_blue.jpg"
   })
   const [isLoading, setIsLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
@@ -58,7 +58,7 @@ export default function ProfilePage() {
           setUser({
             email: data.email || "",
             name: data.name || "User",
-            profilePicture: data.profilePicture || "/placeholder.svg?height=200&width=200",
+            profilePicture: data.profilePicture || "/images/dark_blue.jpg",
           })
           setFormData({ name: data.name || "User" })
         }

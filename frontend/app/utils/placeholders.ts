@@ -10,22 +10,22 @@ export const teamPlaceholders = [
     name: "Adam Lawal",
     role: "CEO & Cofounder",
     description: "Data Engineer and Visionary Leader",
-    image: getPlaceholderImage(200, 200, "Adam"),
+    image: "/images/dark_blue.jpg",
   },
   {
     name: "Ugoeze Eluchie",
     role: "Backend / UI Engineer",
-    description: "Full Stack Developer with a passion for design",
-    image: getPlaceholderImage(200, 200, "Ugoeze"),
+    description: "Full Stack Developer with a passion for AI",
+    image: "/images/dark_blue.jpg",
   },
   {
     name: "Daniel Ibironke",
     role: "Backend Developer",
     description: "Expert in scalable backend systems",
-    image: getPlaceholderImage(200, 200, "Daniel"),
+    image: "/images/dark_blue.jpg",
   },
 ];
 
 // Favicon placeholder
-export const faviconPlaceholder = "/favicon.ico";
+export const faviconPlaceholder = "/images/dark_blue.jpg";
 
