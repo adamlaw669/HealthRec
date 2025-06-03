@@ -599,7 +599,7 @@ export const healthAPI = {
         throw new Error("User not logged in");
       }
       const { username } = JSON.parse(userData);
-      const response = await apiClient.post("/get_weekly_summary", { username });
+      const response = await apiClient.post("/weekly_summary", { username });
       return response.data;
     } catch (error) {
       console.error("Error fetching weekly summary:", error);
