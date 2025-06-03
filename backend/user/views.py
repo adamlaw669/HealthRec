@@ -16,15 +16,17 @@ from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.middleware.csrf import get_token
-#import google.generativeai as genai
-#from googleapiclient.discovery import build
-#from google.oauth2 import id_token
-#from google.auth.transport import requests as google_requests
+from google_auth_oauthlib.flow import Flow
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+import os
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-
+import requests
+from rest_framework.authtoken.models import Token as RefreshToken
+from django.utils.crypto import get_random_string
 
 from .models import *
 from .serializers import *
@@ -1187,7 +1189,7 @@ def google_login(request):
                 'https://www.googleapis.com/auth/fitness.sleep.read',
                 'https://www.googleapis.com/auth/fitness.body.read'
             ],
-            redirect_uri='http://localhost:3000/dashboard'
+            redirect_uri='healthrec.netlify.com/dashboard'
         )
         
         auth_url, _ = flow.authorization_url(
@@ -1200,76 +1202,76 @@ def google_login(request):
         logger.error(f"Error in google_login: {e}")
         return Response({"error": "An error occurred while initiating Google login"}, status=500)
 
-@api_view(["GET", "POST"])
+@api_view(['POST'])
 def google_callback(request):
     try:
-        code = request.GET.get('code') or request.data.get('code')
+        code = request.data.get('code')
         if not code:
-            return Response({"error": "Authorization code is required"}, status=400)
+            return Response({'error': 'No authorization code provided'}, status=400)
+
+        # Exchange code for tokens
+        token_url = 'https://oauth2.googleapis.com/token'
+        token_data = {
+            'code': code,
+            'client_id': settings.GOOGLE_CLIENT_ID,
+            'client_secret': settings.GOOGLE_CLIENT_SECRET,
+            'redirect_uri': settings.GOOGLE_REDIRECT_URI,
+            'grant_type': 'authorization_code'
+        }
+        
+        token_response = requests.post(token_url, data=token_data)
+        if not token_response.ok:
+            return Response({'error': 'Failed to exchange code for token'}, status=400)
             
-        flow = Flow.from_client_secrets_file(
-            'credentials.json',
-            scopes=[
-                'openid', 'email', 'profile',
-                'https://www.googleapis.com/auth/fitness.activity.read',
-                'https://www.googleapis.com/auth/fitness.heart_rate.read',
-                'https://www.googleapis.com/auth/fitness.sleep.read',
-                'https://www.googleapis.com/auth/fitness.body.read'
-            ],
-            redirect_uri='http://localhost:3000/dashboard'
+        token_json = token_response.json()
+        access_token = token_json.get('access_token')
+        
+        # Get user info from Google
+        userinfo_response = requests.get(
+            'https://www.googleapis.com/oauth2/v3/userinfo',
+            headers={'Authorization': f'Bearer {access_token}'}
         )
         
-        flow.fetch_token(code=code)
-        credentials = flow.credentials
+        if not userinfo_response.ok:
+            return Response({'error': 'Failed to get user info from Google'}, status=400)
+            
+        userinfo = userinfo_response.json()
+        email = userinfo.get('email')
         
-        # Get user info
-        idinfo = id_token.verify_oauth2_token(
-            credentials.id_token, 
-            google_requests.Request()
-        )
-        
-        email = idinfo['email']
-        name = idinfo.get('name', '')
-        name_parts = name.split()
-        first_name = name_parts[0] if name_parts else ''
-        last_name = name_parts[1] if len(name_parts) > 1 else ''
-        
-        # Create or get user
-        user, created = User.objects.get_or_create(
-            username=email,
-            defaults={
-                "first_name": first_name,
-                "last_name": last_name,
-                "email": email
-            }
-        )
-        
-        # Store credentials
-        UserCredentials.objects.update_or_create(
-            user=user,
-            defaults={
-                'token': credentials.token,
-                'refresh_token': credentials.refresh_token,
-                'token_uri': credentials.token_uri,
-                'client_id': credentials.client_id,
-                'client_secret': credentials.client_secret,
-                'scopes': credentials.scopes
-            }
-        )
-        
-        # Fetch and save health data
-        fetch_and_save_health_data(user, credentials)
+        if not email:
+            return Response({'error': 'No email provided by Google'}, status=400)
+            
+        # Get or create user
+        try:
+            user = User.objects.get(username=email)
+        except User.DoesNotExist:
+            # Create new user
+            user = User.objects.create_user(
+                username=email,
+                email=email,
+                password=get_random_string(32)  # Random password for security
+            )
+            user.first_name = userinfo.get('given_name', '')
+            user.last_name = userinfo.get('family_name', '')
+            user.save()
+            
+        # Generate JWT tokens
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
         
         return Response({
-            "message": "Google login successful",
-            "user": {
-                "username": user.username,
-                "name": user.first_name
+            'token': access_token,
+            'refresh': refresh_token,
+            'user': {
+                'username': user.username,
+                'name': f"{user.first_name} {user.last_name}".strip() or user.username.split('@')[0],
+                'email': user.email
             }
         })
+        
     except Exception as e:
-        logger.error(f"Error in google_callback: {e}")
-        return Response({"error": "An error occurred during Google authentication"}, status=500)
+        return Response({'error': str(e)}, status=500)
 
 @api_view(["GET"])
 def google_status(request):

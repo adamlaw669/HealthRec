@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { authAPI } from '../api/api';
 
 export default function GoogleLoginComponent() {
   const navigate = useNavigate();
@@ -20,26 +21,28 @@ export default function GoogleLoginComponent() {
         ux_mode: 'popup',
         callback: async (response: google.accounts.oauth2.CodeResponse) => {
           if (response.code) {
-            console.log('Auth Code:', response.code);
-
-            const res = await fetch('http://127.0.0.1:8000/signup', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ code: response.code }),
-            });
-
-            const data = await res.json();
-
-            if (res.ok) {
-              const userData = {
-                username: data.user.username,
-                name: data.user.name || data.user.username.split('@')[0],
-                email: data.user.username
-              };
-              localStorage.setItem('user', JSON.stringify(userData));
-              window.location.href = 'http://127.0.0.1:8000/dashboard';
-            } else {
-              alert(data.error || 'Something went wrong during login.');
+            try {
+              const data = await authAPI.googleCallback(response.code);
+              
+              if (data.token) {
+                localStorage.setItem('token', data.token);
+                if (data.refresh) {
+                  localStorage.setItem('refresh', data.refresh);
+                }
+                
+                const userData = {
+                  username: data.user.username,
+                  name: data.user.name || data.user.username.split('@')[0],
+                  email: data.user.username
+                };
+                localStorage.setItem('user', JSON.stringify(userData));
+                navigate('/dashboard');
+              } else {
+                throw new Error(data.error || 'Authentication failed');
+              }
+            } catch (error) {
+              console.error('Google login error:', error);
+              alert(error instanceof Error ? error.message : 'Authentication failed');
             }
           }
         },
@@ -51,12 +54,8 @@ export default function GoogleLoginComponent() {
           tokenClient.requestCode();
         });
       }
-    const user = localStorage.getItem("user");  
-    if (user){
-      navigate('/dashboard');
     }
-    }
-  }, []);
+  }, [navigate]);
 
   return (
     <button

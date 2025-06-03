@@ -288,21 +288,10 @@ export const authAPI = {
 
   googleLogin: async () => {
     try {
-      const response = await apiClient.get("/google_login");
-      if (response.status === 200 && response.data.authUrl) {
-        // Clear any existing auth tokens first
-        localStorage.removeItem("token");
-        localStorage.removeItem("refresh");
-
-        // Redirect to Google's auth page
-        window.location.href = response.data.authUrl;
-        return true;
-      } else {
-        console.error("Failed to get Google login URL:", response.data);
-        throw new Error("Failed to get Google login URL");
-      }
+      const response = await apiClient.get('/google_login/');
+      return response.data;
     } catch (error) {
-      console.error("Google login error:", handleError(error));
+      console.error('Google login error:', error);
       throw error;
     }
   },
@@ -352,6 +341,16 @@ export const authAPI = {
       return response.data;
     } catch (error) {
       throw new Error("Invalid token");
+    }
+  },
+
+  googleCallback: async (code: string) => {
+    try {
+      const response = await apiClient.post('/google_callback/', { code });
+      return response.data;
+    } catch (error) {
+      console.error('Google callback error:', error);
+      throw error;
     }
   },
 };

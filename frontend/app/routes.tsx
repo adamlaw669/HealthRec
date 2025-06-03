@@ -67,11 +67,11 @@ const router = createBrowserRouter([
       },
       {
         path: "dashboard",
-        element: <Dashboard />, // Removed RequireAuth
+        element: <Dashboard />, 
       },
       {
         path: "metrics",
-        element: <MetricsPage />, // Removed RequireAuth
+        element: <MetricsPage />, 
       },
       {
         path: "metrics/heart-rate",
@@ -123,11 +123,11 @@ const router = createBrowserRouter([
       },
       {
         path: "profile",
-        element: <ProfilePage />, // Removed RequireAuth
+        element: <ProfilePage />, 
       },
       {
         path: "settings",
-        element: <SettingsPage />, // Removed RequireAuth
+        element: <SettingsPage />, 
       },
       {
         path: "*",
