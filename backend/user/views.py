@@ -270,7 +270,7 @@ def signup_view(request):
                 'https://www.googleapis.com/auth/fitness.sleep.read',
                 'https://www.googleapis.com/auth/fitness.body.read'
             ],
-            redirect_uri='http://localhost:3000/dashboard'  # this must match Google Console!
+            redirect_uri='https://healthrec.netlify.app/dashboard'  # this must match Google Console!
         )
 
         flow.fetch_token(code=code)
@@ -395,13 +395,16 @@ def health_data_view(request):
         username = request.query_params.get('username')
         if not username:
             return Response({"error": "Username is required"}, status=400)
+
         try:
             user = User.objects.get(username=username)
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=404)
+
         # Get last 7 days of data
         last_7_days = now().date() - timedelta(days=7)
         data = DailyHealthData.objects.filter(user=user, date__gte=last_7_days).order_by('date')
+
         if not data.exists():
             # Return empty data structure if no data exists
             return Response([
@@ -415,11 +418,14 @@ def health_data_view(request):
                     "calories": 0
                 } for i in range(7)
             ])
-    serializer = DailydataSerializer(data, many=True)
-    return Response(serializer.data)
+
+        serializer = DailydataSerializer(data, many=True)
+        return Response(serializer.data)
+
     except Exception as e:
         logger.error(f"Error in health_data_view: {e}")
         return Response({"error": "An error occurred while fetching health data"}, status=500)
+
 
 @api_view(["GET"])
 def get_activity_data(request):
@@ -656,37 +662,62 @@ def get_weekly_summary(request):
         username = request.data.get("username")
         if not username:
             return Response({"error": "Username is required"}, status=400)
+
         try:
             user = User.objects.get(username=username)
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=404)
-    last_7_days = now().date() - timedelta(days=7)
-    data = DailyHealthData.objects.filter(user=user, date__gte=last_7_days)
-    if not data.exists():
+
+        last_7_days = now().date() - timedelta(days=7)
+        data = DailyHealthData.objects.filter(user=user, date__gte=last_7_days)
+
+        if not data.exists():
             return Response({
-                "summary": ["No activity data available", "No sleep data available", "No heart rate data available"],
+                "summary": [
+                    "No activity data available",
+                    "No sleep data available",
+                    "No heart rate data available"
+                ],
                 "trends": {
-            "steps": 0,
-            "sleep": 0,
-            "heart_rate": 0,
-            "weight": 0,
+                    "steps": 0,
+                    "sleep": 0,
+                    "heart_rate": 0,
+                    "weight": 0,
                     "calories": 0,
                     "active_minutes": 0
                 },
                 "status": "no_data"
             })
+
         # Calculate trends with proper type conversion
         total_steps = sum(int(d.steps) if isinstance(d.steps, str) else d.steps for d in data)
-        avg_sleep = sum(float(d.sleep) if isinstance(d.sleep, str) else d.sleep for d in data) / data.count() if data.count() > 0 else 0
-        avg_heart_rate = sum(int(d.heart_rate) if isinstance(d.heart_rate, str) else d.heart_rate for d in data) / data.count() if data.count() > 0 else 0
+        avg_sleep = (
+            sum(float(d.sleep) if isinstance(d.sleep, str) else d.sleep for d in data) / data.count()
+            if data.count() > 0 else 0
+        )
+        avg_heart_rate = (
+            sum(int(d.heart_rate) if isinstance(d.heart_rate, str) else d.heart_rate for d in data) / data.count()
+            if data.count() > 0 else 0
+        )
         total_active_minutes = sum(int(d.activity_minutes) if isinstance(d.activity_minutes, str) else d.activity_minutes for d in data)
         total_calories = sum(int(d.calories) if isinstance(d.calories, str) else d.calories for d in data)
-        latest_weight = float(data.last().weight) if isinstance(data.last().weight, str) else data.last().weight if data.exists() else 0
+        latest_weight = (
+            float(data.last().weight) if isinstance(data.last().weight, str) else data.last().weight
+            if data.exists() else 0
+        )
+
         # Generate summaries using OpenAI
-        activity_summary = get_openai_response(f'Give me a brief one-line summary of my activity levels this week. I have a total of {total_active_minutes} active minutes and {total_steps} steps.')
-        sleep_summary = get_openai_response(f'Give me a brief one-line summary of my sleep patterns this week. I averaged {round(avg_sleep, 1)} hours of sleep per night.')
-        heart_summary = get_openai_response(f'Give me a brief one-line summary of my heart health this week. My average heart rate was {round(avg_heart_rate, 1)} bpm.')
-    summary = {
+        activity_summary = get_openai_response(
+            f'Give me a brief one-line summary of my activity levels this week. I have a total of {total_active_minutes} active minutes and {total_steps} steps.'
+        )
+        sleep_summary = get_openai_response(
+            f'Give me a brief one-line summary of my sleep patterns this week. I averaged {round(avg_sleep, 1)} hours of sleep per night.'
+        )
+        heart_summary = get_openai_response(
+            f'Give me a brief one-line summary of my heart health this week. My average heart rate was {round(avg_heart_rate, 1)} bpm.'
+        )
+
+        summary = {
             "summary": [
                 activity_summary.strip(),
                 sleep_summary.strip(),
@@ -702,13 +733,16 @@ def get_weekly_summary(request):
             },
             "status": "success"
         }
+
         return Response(summary)
+
     except Exception as e:
         logger.error(f"Error in get_weekly_summary: {e}")
         return Response({
             "error": "An error occurred while generating weekly summary",
             "details": str(e)
         }, status=500)
+
     
 
 @csrf_exempt  # Disable CSRF for simplicity (enable in production)
