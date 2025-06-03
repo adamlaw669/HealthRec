@@ -415,8 +415,8 @@ def health_data_view(request):
                     "calories": 0
                 } for i in range(7)
             ])
-    serializer = DailydataSerializer(data, many=True)
-    return Response(serializer.data)
+        serializer = DailydataSerializer(data, many=True)
+        return Response(serializer.data)
     except Exception as e:
         logger.error(f"Error in health_data_view: {e}")
         return Response({"error": "An error occurred while fetching health data"}, status=500)
@@ -660,21 +660,21 @@ def get_weekly_summary(request):
             user = User.objects.get(username=username)
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=404)
-    last_7_days = now().date() - timedelta(days=7)
-    data = DailyHealthData.objects.filter(user=user, date__gte=last_7_days)
-    if not data.exists():
-            return Response({
-                "summary": ["No activity data available", "No sleep data available", "No heart rate data available"],
-                "trends": {
-            "steps": 0,
-            "sleep": 0,
-            "heart_rate": 0,
-            "weight": 0,
+        last_7_days = now().date() - timedelta(days=7)
+        data = DailyHealthData.objects.filter(user=user, date__gte=last_7_days)
+        if not data.exists():
+                return Response({
+                    "summary": ["No activity data available", "No sleep data available", "No heart rate data available"],
+                    "trends": {
+                    "steps": 0,
+                    "sleep": 0,
+                    "heart_rate": 0,
+                    "weight": 0,
                     "calories": 0,
                     "active_minutes": 0
-                },
-                "status": "no_data"
-            })
+                    },
+                    "status": "no_data"
+                })
         # Calculate trends with proper type conversion
         total_steps = sum(int(d.steps) if isinstance(d.steps, str) else d.steps for d in data)
         avg_sleep = sum(float(d.sleep) if isinstance(d.sleep, str) else d.sleep for d in data) / data.count() if data.count() > 0 else 0
@@ -686,7 +686,7 @@ def get_weekly_summary(request):
         activity_summary = get_openai_response(f'Give me a brief one-line summary of my activity levels this week. I have a total of {total_active_minutes} active minutes and {total_steps} steps.')
         sleep_summary = get_openai_response(f'Give me a brief one-line summary of my sleep patterns this week. I averaged {round(avg_sleep, 1)} hours of sleep per night.')
         heart_summary = get_openai_response(f'Give me a brief one-line summary of my heart health this week. My average heart rate was {round(avg_heart_rate, 1)} bpm.')
-    summary = {
+        summary = {
             "summary": [
                 activity_summary.strip(),
                 sleep_summary.strip(),
