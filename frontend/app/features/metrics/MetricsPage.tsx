@@ -127,6 +127,11 @@ const Metrics: React.FC = () => {
       setIsLoading(true);
       setError(null);
       try {
+        const userData = localStorage.getItem("user");
+        if (!userData) {
+          throw new Error("User not logged in");
+        }
+
         const [stepsData, heartRateData, sleepData, weightData, caloriesData, activityData] = await Promise.all([
           healthAPI.getStepData(),
           healthAPI.getHeartRateData(),
@@ -344,9 +349,44 @@ const Metrics: React.FC = () => {
   }
   console.log("metrics:", metrics)
 
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>{error}</div>;
-  if (!metrics) return <div>No metrics available</div>;
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900">
+        <Sidebar />
+        <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? "ml-64" : "ml-20"} p-6 overflow-auto`}>
+          <div className="flex justify-center items-center h-full">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900">
+        <Sidebar />
+        <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? "ml-64" : "ml-20"} p-6 overflow-auto`}>
+          <div className="text-center text-red-600 dark:text-red-400 p-4">
+            {error}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (!metrics) {
+    return (
+      <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900">
+        <Sidebar />
+        <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? "ml-64" : "ml-20"} p-6 overflow-auto`}>
+          <div className="text-center text-gray-600 dark:text-gray-400 p-4">
+            No metrics available. Please add some data to see your metrics.
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900">

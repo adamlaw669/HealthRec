@@ -1,4 +1,5 @@
 import axios from "axios";
+//import { HealthInterpreter } from "components/ui/HealthInterpreter";
 
 // Development API URL
 const DEV_API_URL = "https://healthrec.onrender.com" // Production backend URL
@@ -423,7 +424,9 @@ export const healthAPI = {
       }
       const { username } = JSON.parse(userData);
       const response = await apiClient.get(`/step_data?username=${username}`);
-      console.log("Step data response:", response.data);
+      if (!response.data || !Array.isArray(response.data.labels) || !Array.isArray(response.data.values)) {
+        return { labels: [], values: [] };
+      }
       return response.data;
     } catch (error) {
       console.error("Error fetching step data:", error);
@@ -439,6 +442,9 @@ export const healthAPI = {
       }
       const { username } = JSON.parse(userData);
       const response = await apiClient.get(`/sleep_data?username=${username}`);
+      if (!response.data || !Array.isArray(response.data.labels) || !Array.isArray(response.data.values)) {
+        return { labels: [], values: [] };
+      }
       return response.data;
     } catch (error) {
       console.error("Error fetching sleep data:", error);
@@ -454,6 +460,9 @@ export const healthAPI = {
       }
       const { username } = JSON.parse(userData);
       const response = await apiClient.get(`/heart_data?username=${username}`);
+      if (!response.data || !Array.isArray(response.data.labels) || !Array.isArray(response.data.values)) {
+        return { labels: [], values: [] };
+      }
       return response.data;
     } catch (error) {
       console.error("Error fetching heart rate data:", error);
@@ -469,6 +478,9 @@ export const healthAPI = {
       }
       const { username } = JSON.parse(userData);
       const response = await apiClient.get(`/weight_data?username=${username}`);
+      if (!response.data || !Array.isArray(response.data.labels) || !Array.isArray(response.data.values)) {
+        return { labels: [], values: [] };
+      }
       return response.data;
     } catch (error) {
       console.error("Error fetching weight data:", error);
@@ -484,6 +496,9 @@ export const healthAPI = {
       }
       const { username } = JSON.parse(userData);
       const response = await apiClient.get(`/calories_data?username=${username}`);
+      if (!response.data || !Array.isArray(response.data.labels) || !Array.isArray(response.data.values)) {
+        return { labels: [], values: [] };
+      }
       return response.data;
     } catch (error) {
       console.error("Error fetching calories data:", error);
@@ -499,6 +514,9 @@ export const healthAPI = {
       }
       const { username } = JSON.parse(userData);
       const response = await apiClient.get(`/activity_data?username=${username}`);
+      if (!response.data || !Array.isArray(response.data.labels) || !Array.isArray(response.data.values)) {
+        return { labels: [], values: [] };
+      }
       return response.data;
     } catch (error) {
       console.error("Error fetching activity data:", error);
