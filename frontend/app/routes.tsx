@@ -1,17 +1,17 @@
 //import React from "react"
 import { createBrowserRouter, Navigate } from "react-router-dom"
 import { Root } from "./components/Root"
-import LandingPage from "./features/landing/LandingPage"
-import AuthPage from "./features/auth/AuthPage"
-import Dashboard from "./features/dashboard/Dashboard"
-import MetricsPage from "./features/metrics/MetricsPage"
-import ProfilePage from "./features/profile/ProfilePage"
-import SettingsPage from "./features/settings/SettingsPage"
-import GoogleCallback from "./features/auth/GoogleCallback"
 import { lazy, Suspense } from "react"
 
-// Import the enhanced GoogleCallback from auth/callback
-import AuthCallback from "./auth/callback/page"
+// Lazy load all pages
+const LandingPage = lazy(() => import("./features/landing/LandingPage"))
+const AuthPage = lazy(() => import("./features/auth/AuthPage"))
+const Dashboard = lazy(() => import("./features/dashboard/Dashboard"))
+const MetricsPage = lazy(() => import("./features/metrics/MetricsPage"))
+const ProfilePage = lazy(() => import("./features/profile/ProfilePage"))
+const SettingsPage = lazy(() => import("./features/settings/SettingsPage"))
+const GoogleCallback = lazy(() => import("./features/auth/GoogleCallback"))
+const AuthCallback = lazy(() => import("./auth/callback/page"))
 
 // Lazy load metric detail pages
 const HeartRateMetric = lazy(() => import("./features/metrics/HeartRateMetric"))
@@ -44,6 +44,13 @@ const LazyLoading = () => (
   return <>{children}</>
 } */
 
+// Wrap all lazy-loaded components with Suspense
+const withSuspense = (Component: React.ComponentType) => (
+  <Suspense fallback={<LazyLoading />}>
+    <Component />
+  </Suspense>
+)
+
 const router = createBrowserRouter([
   {
     path: "/",
@@ -51,83 +58,59 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <LandingPage />,
+        element: withSuspense(LandingPage),
       },
       {
         path: "auth",
-        element: <AuthPage />,
+        element: withSuspense(AuthPage),
       },
       {
         path: "auth/callback",
-        element: <GoogleCallback />,
+        element: withSuspense(GoogleCallback),
       },
       {
         path: "auth/callback/enhanced",
-        element: <AuthCallback />,
+        element: withSuspense(AuthCallback),
       },
       {
         path: "dashboard",
-        element: <Dashboard />, 
+        element: withSuspense(Dashboard),
       },
       {
         path: "metrics",
-        element: <MetricsPage />, 
+        element: withSuspense(MetricsPage),
       },
       {
         path: "metrics/heart-rate",
-        element: (
-          <Suspense fallback={<LazyLoading />}>
-            <HeartRateMetric />
-          </Suspense>
-        ),
+        element: withSuspense(HeartRateMetric),
       },
       {
         path: "metrics/sleep",
-        element: (
-          <Suspense fallback={<LazyLoading />}>
-            <SleepMetric />
-          </Suspense>
-        ),
+        element: withSuspense(SleepMetric),
       },
       {
         path: "metrics/steps",
-        element: (
-          <Suspense fallback={<LazyLoading />}>
-            <StepsMetric />
-          </Suspense>
-        ),
+        element: withSuspense(StepsMetric),
       },
       {
         path: "metrics/calories",
-        element: (
-          <Suspense fallback={<LazyLoading />}>
-            <CaloriesMetric />
-          </Suspense>
-        ),
+        element: withSuspense(CaloriesMetric),
       },
       {
         path: "metrics/active-minutes",
-        element: (
-          <Suspense fallback={<LazyLoading />}>
-            <ActiveMinutesMetric />
-          </Suspense>
-        ),
+        element: withSuspense(ActiveMinutesMetric),
       },
       {
         path: "metrics/weight",
-        element: (
-          <Suspense fallback={<LazyLoading />}>
-            <WeightMetric />
-          </Suspense>
-        ),
+        element: withSuspense(WeightMetric),
       },
       {
         path: "profile",
-        element: <ProfilePage />, 
+        element: withSuspense(ProfilePage),
       },
       {
         path: "settings",
-        element: <SettingsPage />, 
+        element: withSuspense(SettingsPage),
       },
       {
         path: "*",

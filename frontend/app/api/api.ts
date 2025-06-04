@@ -705,8 +705,8 @@ export const googleCallback = async (code: string): Promise<any> => {
 
   // Log the current base URL and paths we're going to try
   console.log("API base URL:", apiClient.defaults.baseURL);
-  const getUrl = `/google_callback?code=${encodeURIComponent(code)}`;
-  const postUrl = "/google_callback";
+  const getUrl = `/google_callback/?code=${encodeURIComponent(code)}`;
+  const postUrl = "/google_callback/";
   console.log("GET URL:", getUrl);
   console.log("POST URL:", postUrl);
 

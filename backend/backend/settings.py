@@ -39,7 +39,10 @@ ALLOWED_HOSTS = [
 ]
 
 OPENAI_API_KEY = config("OPENAI_API_KEY")
-
+GOOGLE_REDIRECT_URI = "https://healthrec.netlify.app/dashboard"
+GOOGLE_CLIENT_ID = '544730488651-rsgigbm1dfciek9q0d9pkt4mbr11s1tr.apps.googleusercontent.com'
+GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')
+GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'healthrec.netlify.app/dashboard') 
 
 _BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
