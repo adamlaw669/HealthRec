@@ -31,18 +31,6 @@ const LazyLoading = () => (
   </div>
 )
 
-// Auth guard for protected routes - temporarily disabled
-/* const RequireAuth = ({ children }: { children: React.ReactNode }) => {
-  const isAuthenticated = !!localStorage.getItem("token")
-  const location = window.location.pathname
-
-  // Allow access to landing page, auth pages, and auth callback without authentication
-  if (!isAuthenticated && location !== "/" && !location.startsWith("/auth")) {
-    return <Navigate to="/auth?mode=signin" replace />
-  }
-
-  return <>{children}</>
-} */
 
 // Wrap all lazy-loaded components with Suspense
 const withSuspense = (Component: React.ComponentType) => (
