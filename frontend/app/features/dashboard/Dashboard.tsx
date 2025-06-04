@@ -390,7 +390,7 @@ export default function Dashboard() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-semibold text-gray-800 dark:text-white">Dashboard</h1>
           <div className="flex items-center space-x-4">
-            <AIStatus isOnline={isAiOnline} />
+            {/* <AIStatus isOnline={isAiOnline} /> */}
             <button 
               onClick={handleToggleTheme} 
               className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-colors"
