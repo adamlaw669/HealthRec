@@ -176,7 +176,7 @@ export function HealthInterpreter() {
         </Button>
       </div>
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
           <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-2xl max-h-[80vh] flex flex-col">
             <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
               <h2 className="text-xl font-semibold">Health Metrics Interpreter</h2>

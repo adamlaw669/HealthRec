@@ -402,7 +402,7 @@ export default function Dashboard() {
         </div>
 
         {/* Health Interpreter Section */}
-        <div className="mt-8">
+        <div className="mt-8 relative z-[100]">
           <HealthInterpreter />
         </div>
 
