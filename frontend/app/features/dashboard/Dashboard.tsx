@@ -383,9 +383,9 @@ export default function Dashboard() {
   };
 
   return (
-    <div className={`flex h-screen bg-gray-100 dark:bg-gray-900 ${isSidebarOpen ? "ml-64" : "ml-0"} transition-all duration-300`}>
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
       <Sidebar />
-      <div className="flex-1 p-8 overflow-y-auto">
+      <div className={`flex-1 transition-all duration-300 ${isSidebarOpen ? "ml-64" : "ml-24"} p-8 overflow-y-auto`}>
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-semibold text-gray-800 dark:text-white">Dashboard</h1>

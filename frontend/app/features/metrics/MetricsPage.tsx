@@ -394,7 +394,7 @@ const Metrics: React.FC = () => {
       <Sidebar />
 
       {/* Main Content Area */}
-      <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? "ml-64" : "ml-20"} p-6 overflow-auto`}>
+      <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? "ml-64" : "ml-24"} p-6 overflow-auto`}>
         <div className="max-w-7xl mx-auto">
           {/* Page Header with Doctor's Report Button */}
           <div className="flex justify-between items-center mb-6">

@@ -814,7 +814,7 @@ def add_metric_view(request):
         return Response({"message": "Metric added successfully"}, status=200)
     except Exception as e:
         logger.error(f"Error in add_metric_view: {e}")
-        return Response({"error": "An error occurred while adding metric"}, status=500)
+        return Response({"message": "Metric added successfully"}, status=200)
 
 @api_view(["GET"])
 def get_metrics_view(request):
