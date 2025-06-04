@@ -600,6 +600,15 @@ export const healthAPI = {
       const response = await apiClient.get(`/download_health_data?username=${username}&format=${format}`, {
         responseType: format === 'csv' ? 'blob' : 'json'
       });
+
+      if (format === 'json') {
+        // Create a properly formatted JSON string
+        const jsonString = JSON.stringify(response.data, null, 2);
+        // Create a blob with the properly formatted JSON
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        return blob;
+      }
+      
       return response.data;
     } catch (error: unknown) {
       throw handleError(error);
