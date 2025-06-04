@@ -355,6 +355,12 @@ export const authAPI = {
   },
 };
 
+// Utility function to clean up AI recommendations
+const cleanRecommendation = (text: string): string => {
+  // Remove numbers followed by dots at the start of the text
+  return text.replace(/^\d+\.\s*/, '');
+};
+
 // Health Recommendations API
 export const healthAPI = {
   getHealthRecommendation: async () => {
@@ -365,6 +371,15 @@ export const healthAPI = {
       }
       const { username } = JSON.parse(userData);
       const response = await apiClient.post("/get_health_recommendation", { username });
+      
+      // Clean up the recommendations
+      if (response.data?.recommendations?.general?.insights) {
+        response.data.recommendations.general.insights = response.data.recommendations.general.insights.map(cleanRecommendation);
+      }
+      if (response.data?.recommendations?.correlation) {
+        response.data.recommendations.correlation = response.data.recommendations.correlation.map(cleanRecommendation);
+      }
+      
       return response.data;
     } catch (error) {
       console.error("Error fetching health recommendations:", error);
