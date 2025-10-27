@@ -95,3 +95,32 @@ class UserHealthMetric(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.metric_type.display_name} - {self.measured_at}"
+
+
+class UserSettings(models.Model):
+    """Stores user preferences and settings"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    notifications_enabled = models.BooleanField(default=True)
+    theme = models.CharField(max_length=20, default='light', choices=[('light', 'Light'), ('dark', 'Dark')])
+    units = models.CharField(max_length=20, default='metric', choices=[('metric', 'Metric'), ('imperial', 'Imperial')])
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = "User Settings"
+
+    def __str__(self):
+        return f"Settings for {self.user.username}"
+
+
+class AccountDeletion(models.Model):
+    """Tracks scheduled account deletions"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    scheduled_date = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-scheduled_date']
+
+    def __str__(self):
+        return f"Deletion scheduled for {self.user.username} on {self.scheduled_date}"

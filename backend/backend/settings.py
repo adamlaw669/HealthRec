@@ -29,7 +29,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', '') != 'True'
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = [
     'localhost',
@@ -38,11 +38,10 @@ ALLOWED_HOSTS = [
     'healthrec.netlify.app',  # Netlify frontend
 ]
 
-OPENAI_API_KEY = config("OPENAI_API_KEY")
-GOOGLE_REDIRECT_URI = "https://healthrec.netlify.app/dashboard"
+OPENAI_API_KEY = config("OPENAI_API_KEY", default="")
 GOOGLE_CLIENT_ID = '544730488651-rsgigbm1dfciek9q0d9pkt4mbr11s1tr.apps.googleusercontent.com'
 GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')
-GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'healthrec.netlify.app/dashboard') 
+GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'https://healthrec.netlify.app/dashboard') 
 
 _BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
@@ -80,14 +79,17 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
+
+# URL Configuration
+APPEND_SLASH = True
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
@@ -116,8 +118,6 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
-
-ROOT_URLCONF = 'backend.urls'
 
 ROOT_URLCONF = 'backend.urls' 
 
@@ -187,7 +187,6 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field

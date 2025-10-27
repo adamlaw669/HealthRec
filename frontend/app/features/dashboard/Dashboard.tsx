@@ -401,10 +401,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Health Interpreter Section */}
-        <div className="mt-8 relative z-[100]">
-          <HealthInterpreter />
-        </div>
+        {/* Health Interpreter - Hidden as it's accessed via floating button */}
+        <HealthInterpreter />
 
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
@@ -696,17 +694,34 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Floating Action Button */}
+      {/* Floating Action Buttons */}
       <div className="fixed bottom-8 right-8 z-50">
-        <div className="relative">
-          {/* Add Metric Button */}
+        <div className="flex flex-col gap-4 items-end">
+          {/* Health Interpreter Button */}
           <button
-            onClick={() => setIsAddMenuOpen(!isAddMenuOpen)}
-            className="w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 transform hover:scale-110"
-            aria-label="Add health metric"
+            onClick={() => {
+              const healthInterpreterModal = document.querySelector('[data-health-interpreter]');
+              if (healthInterpreterModal) {
+                (healthInterpreterModal as HTMLButtonElement).click();
+              }
+            }}
+            className="w-14 h-14 bg-purple-600 hover:bg-purple-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 transform hover:scale-110"
+            aria-label="Ask about health metrics"
+            title="Ask about health metrics"
           >
-            <FaPlus className="text-xl" />
+            <FaBrain className="text-xl" />
           </button>
+          
+          {/* Add Metric Button */}
+          <div className="relative">
+            <button
+              onClick={() => setIsAddMenuOpen(!isAddMenuOpen)}
+              className="w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 transform hover:scale-110"
+              aria-label="Add health metric"
+              title="Add health metric"
+            >
+              <FaPlus className="text-xl" />
+            </button>
 
           {/* Dropdown Menu */}
           {isAddMenuOpen && (

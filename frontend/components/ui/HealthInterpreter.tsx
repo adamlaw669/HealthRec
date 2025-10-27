@@ -167,14 +167,13 @@ export function HealthInterpreter() {
 */
   return (
     <>
-      <div className="fixed bottom-24 right-8">
-        <Button
-          onClick={() => setShowModal(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg"
-        >
-          Ask About Your Health
-        </Button>
-      </div>
+      {/* Hidden trigger button for dashboard */}
+      <button
+        data-health-interpreter
+        onClick={() => setShowModal(true)}
+        className="hidden"
+        aria-hidden="true"
+      />
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
           <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-2xl max-h-[80vh] flex flex-col">
