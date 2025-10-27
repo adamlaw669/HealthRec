@@ -346,7 +346,10 @@ export const authAPI = {
 
   googleCallback: async (code: string) => {
     try {
-      const response = await apiClient.post('/google_callback', { code });
+      const csrfToken = await getCsrfToken();
+      const response = await apiClient.post('/google_callback/', { code }, {
+        headers: csrfToken ? { "X-CSRFToken": csrfToken } : undefined,
+      });
       return response.data;
     } catch (error) {
       console.error('Google callback error:', error);

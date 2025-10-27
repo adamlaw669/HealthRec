@@ -25,7 +25,6 @@ from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 import requests
-from rest_framework.authtoken.models import Token as RefreshToken
 from django.utils.crypto import get_random_string
 
 from .models import *
@@ -1261,14 +1260,12 @@ def google_callback(request):
             user.last_name = userinfo.get('family_name', '')
             user.save()
             
-        # Generate JWT tokens
-        refresh = RefreshToken.for_user(user)
-        access_token = str(refresh.access_token)
-        refresh_token = str(refresh)
+        # Generate authentication token
+        from rest_framework.authtoken.models import Token
+        token, created = Token.objects.get_or_create(user=user)
         
         return Response({
-            'token': access_token,
-            'refresh': refresh_token,
+            'token': token.key,
             'user': {
                 'username': user.username,
                 'name': f"{user.first_name} {user.last_name}".strip() or user.username.split('@')[0],
