@@ -263,8 +263,11 @@ def signup_view(request):
         return Response({"error": "Missing auth code"}, status=400)
 
     try:
+        # Get credentials file path from user app directory
+        credentials_path = os.path.join(settings.BASE_DIR, 'user', 'credentials.json')
+        
         flow = Flow.from_client_secrets_file(
-            'credentials.json',
+            credentials_path,
             scopes=[
                 'openid', 'email', 'profile',
                 'https://www.googleapis.com/auth/fitness.activity.read',
@@ -272,7 +275,7 @@ def signup_view(request):
                 'https://www.googleapis.com/auth/fitness.sleep.read',
                 'https://www.googleapis.com/auth/fitness.body.read'
             ],
-            redirect_uri='https://healthrec.netlify.app/dashboard'  # this must match Google Console!
+            redirect_uri=settings.GOOGLE_REDIRECT_URI
         )
 
         flow.fetch_token(code=code)
@@ -1180,8 +1183,11 @@ def cancel_deletion(request):
 @api_view(["GET"])
 def google_login(request):
     try:
+        # Get credentials file path from user app directory
+        credentials_path = os.path.join(settings.BASE_DIR, 'user', 'credentials.json')
+        
         flow = Flow.from_client_secrets_file(
-            'credentials.json',
+            credentials_path,
             scopes=[
                 'openid', 'email', 'profile',
                 'https://www.googleapis.com/auth/fitness.activity.read',
@@ -1189,7 +1195,7 @@ def google_login(request):
                 'https://www.googleapis.com/auth/fitness.sleep.read',
                 'https://www.googleapis.com/auth/fitness.body.read'
             ],
-            redirect_uri='healthrec.netlify.com/dashboard'
+            redirect_uri=settings.GOOGLE_REDIRECT_URI
         )
         
         auth_url, _ = flow.authorization_url(
@@ -1313,16 +1319,19 @@ def connect_google_fit(request):
             user = User.objects.get(username=username)
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=404)
+        
+        # Get credentials file path from user app directory
+        credentials_path = os.path.join(settings.BASE_DIR, 'user', 'credentials.json')
             
         flow = Flow.from_client_secrets_file(
-            'credentials.json',
+            credentials_path,
             scopes=[
                 'https://www.googleapis.com/auth/fitness.activity.read',
                 'https://www.googleapis.com/auth/fitness.heart_rate.read',
                 'https://www.googleapis.com/auth/fitness.sleep.read',
                 'https://www.googleapis.com/auth/fitness.body.read'
             ],
-            redirect_uri='http://localhost:3000/dashboard'
+            redirect_uri=settings.GOOGLE_REDIRECT_URI
         )
         
         auth_url, _ = flow.authorization_url(
