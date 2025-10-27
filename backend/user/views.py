@@ -1212,39 +1212,52 @@ def google_callback(request):
     try:
         code = request.data.get('code')
         if not code:
+            logger.error("No authorization code provided in request")
             return Response({'error': 'No authorization code provided'}, status=400)
 
+        logger.info(f"Received authorization code: {code[:20]}...")
+        
         # Exchange code for tokens
         token_url = 'https://oauth2.googleapis.com/token'
         token_data = {
             'code': code,
             'client_id': settings.GOOGLE_CLIENT_ID,
             'client_secret': settings.GOOGLE_CLIENT_SECRET,
-            'redirect_uri': settings.GOOGLE_REDIRECT_URI,
+            'redirect_uri': 'postmessage',  # For popup/code flow, use 'postmessage'
             'grant_type': 'authorization_code'
         }
         
+        logger.info(f"Exchanging code for token with redirect_uri: {token_data['redirect_uri']}")
         token_response = requests.post(token_url, data=token_data)
         if not token_response.ok:
-            return Response({'error': 'Failed to exchange code for token'}, status=400)
+            logger.error(f"Token exchange failed: {token_response.status_code} - {token_response.text}")
+            return Response({
+                'error': 'Failed to exchange code for token',
+                'details': token_response.text
+            }, status=400)
             
         token_json = token_response.json()
         access_token = token_json.get('access_token')
         
         # Get user info from Google
+        logger.info(f"Getting user info with access token")
         userinfo_response = requests.get(
             'https://www.googleapis.com/oauth2/v3/userinfo',
             headers={'Authorization': f'Bearer {access_token}'}
         )
         
         if not userinfo_response.ok:
+            logger.error(f"Failed to get user info: {userinfo_response.status_code} - {userinfo_response.text}")
             return Response({'error': 'Failed to get user info from Google'}, status=400)
             
         userinfo = userinfo_response.json()
         email = userinfo.get('email')
         
         if not email:
+            logger.error(f"No email in user info: {userinfo}")
             return Response({'error': 'No email provided by Google'}, status=400)
+        
+        logger.info(f"Successfully authenticated user: {email}")
             
         # Get or create user
         try:
@@ -1274,6 +1287,7 @@ def google_callback(request):
         })
         
     except Exception as e:
+        logger.error(f"Unexpected error in google_callback: {str(e)}", exc_info=True)
         return Response({'error': str(e)}, status=500)
 
 @api_view(["GET"])
