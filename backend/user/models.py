@@ -1,37 +1,36 @@
 from django.db import models
 from django.contrib.auth.models import User
-from django.utils.html import mark_safe 
-import random
+
 
 class UserCredentials(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    access_token = models.CharField(null=True, blank=True, max_length=300) 
-    refresh_token = models.CharField(null=True, blank=True, max_length=300)  
-    expires_at = models.DateTimeField(null=True, blank=True)  
-    scopes = models.JSONField(null=True, blank=True, default=dict)  
+    access_token = models.CharField(null=True, blank=True, max_length=300)
+    refresh_token = models.CharField(null=True, blank=True, max_length=300)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    scopes = models.JSONField(null=True, blank=True, default=dict)
+
     def __str__(self):
         return f"Tokens for {self.user.username}"
 
-    
+
 class DailyHealthData(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)  
-    date = models.DateField()  # Automatically sets the date
-    steps = models.IntegerField(default=0) 
-    weight = models.FloatField(null=True, blank=True, default=0.0) 
-    sleep = models.FloatField(null=True, blank=True, default=0.0)  
-    heart_rate = models.CharField(null=True, blank=True, max_length=300)  
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    date = models.DateField()
+    steps = models.IntegerField(default=0)
+    weight = models.FloatField(null=True, blank=True, default=0.0)
+    sleep = models.FloatField(null=True, blank=True, default=0.0)
+    heart_rate = models.FloatField(null=True, blank=True, default=0.0)
     activity = models.JSONField(null=True, blank=True, default=dict)
-    activity_minutes = models.IntegerField( blank=True, default=0)  
+    activity_minutes = models.IntegerField(blank=True, default=0)
     calories = models.IntegerField(null=True, blank=True, default=0)
 
     class Meta:
-        unique_together = ('user', 'date')  # Prevents duplicate entries per user per day
-        ordering = ['-date']  # Orders records by latest date first
-
+        unique_together = ('user', 'date')
+        ordering = ['-date']
 
     def __str__(self):
-        return f"{self.user.username} - {self.date} - {self.steps} steps  - {self.weight}weight" 
-    
+        return f"{self.user.username} - {self.date} - {self.steps} steps - {self.weight}kg"
+
 
 class HealthMetricDefinition(models.Model):
     METRIC_TYPES = [
@@ -59,7 +58,7 @@ class HealthMetricDefinition(models.Model):
     min_value = models.FloatField()
     max_value = models.FloatField()
     description = models.TextField()
-    normal_range = models.CharField(max_length=100)  # e.g., "120/80 - 140/90" for BP
+    normal_range = models.CharField(max_length=100)
 
     class Meta:
         ordering = ['display_name']
@@ -69,7 +68,6 @@ class HealthMetricDefinition(models.Model):
 
     @staticmethod
     def get_metric_ranges():
-        """Returns predefined ranges for each metric type"""
         return {
             'blood_pressure_systolic': {'min': 70, 'max': 200, 'unit': 'mmHg'},
             'blood_pressure_diastolic': {'min': 40, 'max': 130, 'unit': 'mmHg'},
@@ -82,11 +80,11 @@ class HealthMetricDefinition(models.Model):
             'respiratory_rate': {'min': 8, 'max': 40, 'unit': 'breaths/min'},
         }
 
+
 class UserHealthMetric(models.Model):
-    """Stores user's health metric measurements"""
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     metric_type = models.ForeignKey(HealthMetricDefinition, on_delete=models.CASCADE)
-    value = models.JSONField()  # Stores value or values (e.g., both systolic and diastolic for BP)
+    value = models.JSONField()
     measured_at = models.DateTimeField(auto_now_add=True)
     notes = models.TextField(blank=True, null=True)
 
@@ -98,7 +96,6 @@ class UserHealthMetric(models.Model):
 
 
 class UserSettings(models.Model):
-    """Stores user preferences and settings"""
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     notifications_enabled = models.BooleanField(default=True)
     theme = models.CharField(max_length=20, default='light', choices=[('light', 'Light'), ('dark', 'Dark')])
@@ -107,14 +104,13 @@ class UserSettings(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name_plural = "User Settings"
+        verbose_name_plural = 'User Settings'
 
     def __str__(self):
         return f"Settings for {self.user.username}"
 
 
 class AccountDeletion(models.Model):
-    """Tracks scheduled account deletions"""
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     scheduled_date = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
