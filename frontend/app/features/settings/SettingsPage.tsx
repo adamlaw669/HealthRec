@@ -1,541 +1,524 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
-import Sidebar from "../../components/Sidebar"
-import { useSidebar } from "../../context/SidebarContext"
-import { FaMoon, FaSun, FaGoogle, FaPen } from "react-icons/fa"
-import { getInitialTheme, toggleTheme } from "../../utils/theme-utils"
+import { useState, useEffect } from "react"
+import {
+  Bell,
+  Globe,
+  Ruler,
+  Moon,
+  Sun,
+  Activity,
+  ShieldCheck,
+  Trash2,
+  Save,
+  CheckCircle2,
+  AlertTriangle,
+  HelpCircle,
+  ChevronDown,
+} from "lucide-react"
+import { authAPI } from "../../api/api"
+import { supportAPI } from "../../api/api"
+import { ChartCard, SectionHeader } from "../../components/ui/ChartCard"
+import { useTheme } from "../../context/ThemeContext"
+import { cn } from "@lib/utils"
 
-// Mock API functions
-const mockAPI = {
-  getProfile: async () => ({
-    email: "user@example.com",
-    name: "John Doe"
-  }),
-  checkGoogleFitStatus: async () => true,
-  getSettings: async () => ({
-    language: "en",
-    darkMode: false,
-    useMetricSystem: true,
-    emailNotifications: true,
-    healthAlerts: true,
-    isActive: true,
-    accountDeletionScheduled: null,
-    googleFitConnected: false
-  }),
-  updateSettings: async (settings: any) => {
-    console.log("Settings updated:", settings)
-    return { success: true }
-  },
-  scheduleAccountDeletion: async (days: number) => {
-    console.log(`Account deletion scheduled in ${days} days`)
-    return { success: true }
-  },
-  cancelAccountDeletion: async () => {
-    console.log("Account deletion cancelled")
-    return { success: true }
-  },
-  connectGoogleFit: async () => {
-    console.log("Google Fit connection initiated")
-    return { success: true }
-  },
-  getFAQs: async () => ({
-    faqs: [
-      {
-        question: "How is my health data secured?",
-        answer: "Your health data is encrypted both in transit and at rest."
-      },
-      {
-        question: "Can I export my health data?",
-        answer: "Yes, you can download your health data in various formats (JSON, CSV, PDF) from your Profile page.",
-      },
-      {
-        question: "How accurate are the AI recommendations?",
-        answer: "Our AI recommendations are based on patterns in your health data and general health guidelines. They should not replace professional medical advice.",
-      },
-      {
-        question: "How do I connect my Google Fit account?",
-        answer: "Go to the Connections tab in Settings and click on 'Connect' next to Google Fit. Follow the authentication steps to grant access.",
-      },
-      {
-        question: "Can I delete my account and all my data?",
-        answer: "Yes, you can request account deletion from the Privacy tab in Settings. This will permanently remove all your data from our systems.",
-      }
-    ]
-  })
+interface Settings {
+  language: string
+  useMetricSystem: boolean
+  emailNotifications: boolean
+  healthAlerts: boolean
+  accountDeletionScheduled: string | null
+}
+
+interface Faq { question: string; answer: string }
+
+type TabKey = "preferences" | "connections" | "privacy" | "support"
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: "preferences", label: "Preferences" },
+  { key: "connections", label: "Connections" },
+  { key: "privacy", label: "Privacy" },
+  { key: "support", label: "Support" },
+]
+
+const LANGUAGES = [
+  { code: "en", label: "English" },
+  { code: "es", label: "Español" },
+  { code: "fr", label: "Français" },
+  { code: "de", label: "Deutsch" },
+]
+
+const DEFAULT_SETTINGS: Settings = {
+  language: "en",
+  useMetricSystem: true,
+  emailNotifications: true,
+  healthAlerts: true,
+  accountDeletionScheduled: null,
 }
 
 export default function SettingsPage() {
-  const { isSidebarOpen } = useSidebar()
-  const navigate = useNavigate()
-  const [language, setLanguage] = useState("English")
-  const [darkMode, setDarkMode] = useState(false)
-  const [activeTab, setActiveTab] = useState("preferences")
-  const [settings, setSettings] = useState({
-    language: "en",
-    darkMode: false,
-    useMetricSystem: true,
-    emailNotifications: true,
-    healthAlerts: true,
-    isActive: true,
-    accountDeletionScheduled: null as Date | null,
-    googleFitConnected: false,
-  })
-  const [_, setContactForm] = useState({
-    subject: "",
-    message: "",
-    email: "",
-  })
-  const [_1, setFaqs] = useState([
-    {
-      question: "How is my health data secured?",
-      answer: "Your health data is encrypted both in transit and at rest."
-    }
-  ])
+  const { darkMode, toggleTheme } = useTheme()
+  const [activeTab, setActiveTab] = useState<TabKey>("preferences")
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   const [isSaving, setIsSaving] = useState(false)
-  const [accountDeletionDays, setAccountDeletionDays] = useState(30)
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
-  const [deletionError, setDeletionError] = useState<string | null>(null)
-  const [deletionSuccess, setDeletionSuccess] = useState(false)
+  const [toast, setToast] = useState<{ tone: "ok" | "err"; text: string } | null>(null)
+  const [fitConnected, setFitConnected] = useState<boolean | null>(null)
+  const [deletionDays, setDeletionDays] = useState(30)
+  const [deleting, setDeleting] = useState(false)
+  const [faqs, setFaqs] = useState<Faq[]>([])
+  const [openFaq, setOpenFaq] = useState<number | null>(null)
+  const [contactForm, setContactForm] = useState({ name: "", email: "", message: "" })
+  const [sending, setSending] = useState(false)
 
   useEffect(() => {
-    const initialDarkMode = getInitialTheme()
-    setDarkMode(initialDarkMode)
-
-    const fetchData = async () => {
+    ;(async () => {
       try {
-        const profile = await mockAPI.getProfile()
-        setContactForm(prev => ({ ...prev, email: profile.email }))
-        
-        const googleFitStatus = await mockAPI.checkGoogleFitStatus()
-        setSettings(prev => ({ ...prev, googleFitConnected: googleFitStatus }))
-        
-        const settingsData = await mockAPI.getSettings()
-        setSettings(prev => ({ ...prev, ...settingsData }))
-        
-        const faqsData = await mockAPI.getFAQs()
-        setFaqs(faqsData.faqs)
-      } catch (error) {
-        console.error("Error fetching data:", error)
+        const s = await authAPI.getSettings()
+        if (s) {
+          setSettings((prev) => ({
+            ...prev,
+            language: s.language || "en",
+            useMetricSystem: s.useMetricSystem ?? true,
+            emailNotifications: s.emailNotifications ?? true,
+            healthAlerts: s.healthAlerts ?? true,
+            accountDeletionScheduled: s.accountDeletionScheduled || null,
+          }))
+        }
+        const fit = await authAPI.checkGoogleFitStatus()
+        setFitConnected(fit)
+      } catch {
+        /* ignore — use defaults */
       }
-    }
+    })()
 
-    fetchData()
+    ;(async () => {
+      try {
+        const res = await supportAPI.getFAQs()
+        if (res?.faqs) setFaqs(res.faqs)
+      } catch {
+        setFaqs(FALLBACK_FAQS)
+      }
+    })()
   }, [])
 
-  const handleToggleTheme = () => {
-    const newDarkMode = toggleTheme(darkMode)
-    setDarkMode(newDarkMode)
-    setSettings(prev => ({ ...prev, darkMode: newDarkMode }))
+  const notify = (tone: "ok" | "err", text: string) => {
+    setToast({ tone, text })
+    setTimeout(() => setToast(null), 3000)
   }
 
-  const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setLanguage(e.target.value)
-  }
+  const patch = <K extends keyof Settings>(key: K, value: Settings[K]) =>
+    setSettings((s) => ({ ...s, [key]: value }))
 
-  const handleNotificationChange = (setting: string) => {
-    setSettings(prev => ({
-      ...prev,
-      [setting]: !prev[setting as keyof typeof prev],
-    }))
-  }
-
-  const handleSaveSettings = async () => {
+  const handleSave = async () => {
     setIsSaving(true)
     try {
-      await mockAPI.updateSettings(settings)
-      // No need for error handling since mock always succeeds
+      await authAPI.updateSettings(settings as any)
+      notify("ok", "Settings saved")
+    } catch (e) {
+      notify("err", e instanceof Error ? e.message : "Save failed")
     } finally {
       setIsSaving(false)
     }
   }
 
   const handleScheduleDeletion = async () => {
-    setIsDeletingAccount(true)
-    setDeletionError(null)
-    setDeletionSuccess(false)
-
+    setDeleting(true)
     try {
-      await mockAPI.scheduleAccountDeletion(accountDeletionDays)
-      setSettings(prev => ({
-        ...prev,
-        accountDeletionScheduled: new Date(Date.now() + accountDeletionDays * 24 * 60 * 60 * 1000)
-      }))
-      setDeletionSuccess(true)
-    } catch (error) {
-      setDeletionError("Failed to schedule deletion")
+      await authAPI.scheduleAccountDeletion(deletionDays)
+      const scheduled = new Date(Date.now() + deletionDays * 86400000).toISOString()
+      patch("accountDeletionScheduled", scheduled)
+      notify("ok", `Deletion scheduled in ${deletionDays} days`)
+    } catch (e) {
+      notify("err", e instanceof Error ? e.message : "Failed")
     } finally {
-      setIsDeletingAccount(false)
+      setDeleting(false)
     }
   }
 
   const handleCancelDeletion = async () => {
-    setIsDeletingAccount(true)
-    setDeletionError(null)
-    setDeletionSuccess(false)
-
+    setDeleting(true)
     try {
-      await mockAPI.cancelAccountDeletion()
-      setSettings(prev => ({ ...prev, accountDeletionScheduled: null }))
-      setDeletionSuccess(true)
-    } catch (error) {
-      setDeletionError("Failed to cancel deletion")
+      await authAPI.cancelAccountDeletion()
+      patch("accountDeletionScheduled", null)
+      notify("ok", "Deletion cancelled")
+    } catch (e) {
+      notify("err", e instanceof Error ? e.message : "Failed")
     } finally {
-      setIsDeletingAccount(false)
+      setDeleting(false)
     }
   }
 
-  const handleGoogleFitConnection = async () => {
+  const handleConnectFit = async () => {
     try {
-      if (settings.googleFitConnected) {
-        setSettings(prev => ({ ...prev, googleFitConnected: false }))
-      } else {
-        await mockAPI.connectGoogleFit()
-        setSettings(prev => ({ ...prev, googleFitConnected: true }))
-      }
-    } catch (error) {
-      console.error("Error managing Google Fit connection:", error)
+      await authAPI.connectGoogleFit()
+      // In demo mode this just flips localStorage; refresh state.
+      const fit = await authAPI.checkGoogleFitStatus()
+      setFitConnected(fit)
+      if (fit) notify("ok", "Google Fit connected")
+    } catch {
+      notify("err", "Couldn't start connection flow")
+    }
+  }
+
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSending(true)
+    try {
+      await supportAPI.contactSupport(contactForm.name, contactForm.email, contactForm.message)
+      setContactForm({ name: "", email: "", message: "" })
+      notify("ok", "Message sent")
+    } catch (e) {
+      notify("err", e instanceof Error ? e.message : "Send failed")
+    } finally {
+      setSending(false)
     }
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900">
-      <Sidebar />
-      <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? "ml-64" : "ml-20"} p-6 overflow-auto`}>
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-semibold text-gray-800 dark:text-white">Settings</h1>
+    <div className="space-y-6">
+      <SectionHeader
+        eyebrow="Settings"
+        title="Tune HealthRec to you"
+        description="Preferences, connections, privacy, and support — all in one place."
+        actions={
+          activeTab !== "support" && (
             <button
-              onClick={handleToggleTheme}
-              className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-colors"
-              aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+              onClick={handleSave}
+              disabled={isSaving}
+              className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 disabled:opacity-70"
             >
-              {darkMode ? <FaSun className="h-5 w-5" /> : <FaMoon className="h-5 w-5" />}
+              <Save className="w-4 h-4" />
+              {isSaving ? "Saving..." : "Save changes"}
             </button>
+          )
+        }
+      />
+
+      {/* Tabs */}
+      <div className="flex items-center gap-1 rounded-xl bg-secondary/60 border border-border/60 p-1 overflow-x-auto no-scrollbar">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setActiveTab(t.key)}
+            className={cn(
+              "px-4 py-2 text-sm font-semibold rounded-lg transition-colors whitespace-nowrap",
+              activeTab === t.key
+                ? "bg-card text-foreground shadow-soft"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "preferences" && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <ChartCard title="Appearance" subtitle="Dark or light theme.">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 text-primary">
+                  {darkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                </span>
+                <div>
+                  <p className="text-sm font-semibold">Dark mode</p>
+                  <p className="text-xs text-muted-foreground">
+                    {darkMode ? "Currently on" : "Currently off"}
+                  </p>
+                </div>
+              </div>
+              <Toggle checked={darkMode} onChange={toggleTheme} />
+            </div>
+          </ChartCard>
+
+          <ChartCard title="Regional" subtitle="Language and unit system.">
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5" /> Language
+                </label>
+                <select
+                  value={settings.language}
+                  onChange={(e) => patch("language", e.target.value)}
+                  className="mt-1.5 w-full h-11 px-3 rounded-xl bg-background border border-border text-sm outline-none focus:border-primary focus:shadow-ring"
+                >
+                  {LANGUAGES.map((l) => (
+                    <option key={l.code} value={l.code}>{l.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Ruler className="w-4 h-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Metric units</p>
+                    <p className="text-xs text-muted-foreground">Use kg / km instead of lb / mi</p>
+                  </div>
+                </div>
+                <Toggle
+                  checked={settings.useMetricSystem}
+                  onChange={(v) => patch("useMetricSystem", v)}
+                />
+              </div>
+            </div>
+          </ChartCard>
+
+          <ChartCard title="Notifications" subtitle="How we contact you." className="lg:col-span-2">
+            <div className="space-y-2 divide-y divide-border/60">
+              <ToggleRow
+                Icon={Bell}
+                title="Email notifications"
+                description="Weekly summaries and important updates"
+                checked={settings.emailNotifications}
+                onChange={(v) => patch("emailNotifications", v)}
+              />
+              <ToggleRow
+                Icon={AlertTriangle}
+                title="Health alerts"
+                description="Notify me when the AI detects something worth reviewing"
+                checked={settings.healthAlerts}
+                onChange={(v) => patch("healthAlerts", v)}
+              />
+            </div>
+          </ChartCard>
+        </div>
+      )}
+
+      {activeTab === "connections" && (
+        <ChartCard title="Google Fit" subtitle="Sync your steps, heart rate, sleep, and more.">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-metric-active/10 text-metric-active">
+                <Activity className="w-5 h-5" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold">
+                  {fitConnected === null
+                    ? "Checking..."
+                    : fitConnected
+                    ? "Connected"
+                    : "Not connected"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {fitConnected
+                    ? "Data syncs automatically in the background."
+                    : "Connect to auto-populate your metrics."}
+                </p>
+              </div>
+            </div>
+            {fitConnected ? (
+              <span className="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl bg-metric-active/10 text-metric-active text-sm font-semibold">
+                <ShieldCheck className="w-4 h-4" /> Active
+              </span>
+            ) : (
+              <button
+                onClick={handleConnectFit}
+                className="inline-flex items-center h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90"
+              >
+                Connect
+              </button>
+            )}
           </div>
+        </ChartCard>
+      )}
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border border-gray-200 dark:border-gray-700">
-            <div className="flex border-b border-gray-200 dark:border-gray-700">
-              <button
-                className={`px-6 py-3 text-sm font-medium ${
-                  activeTab === "preferences"
-                    ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
-                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                }`}
-                onClick={() => setActiveTab("preferences")}
-              >
-                Preferences
-              </button>
-              <button
-                className={`px-6 py-3 text-sm font-medium ${
-                  activeTab === "notifications"
-                    ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
-                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                }`}
-                onClick={() => setActiveTab("notifications")}
-              >
-                Notifications
-              </button>
-              <button
-                className={`px-6 py-3 text-sm font-medium ${
-                  activeTab === "integrations"
-                    ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
-                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                }`}
-                onClick={() => setActiveTab("integrations")}
-              >
-                Integrations
-              </button>
-              <button
-                className={`px-6 py-3 text-sm font-medium ${
-                  activeTab === "account"
-                    ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
-                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                }`}
-                onClick={() => setActiveTab("account")}
-              >
-                Account
-              </button>
+      {activeTab === "privacy" && (
+        <div className="space-y-4">
+          <ChartCard title="Data & privacy" subtitle="You own your data.">
+            <ul className="space-y-2 text-sm">
+              {[
+                "Your health data is encrypted in transit and at rest.",
+                "We never share your data with third parties.",
+                "You can download or delete your data anytime.",
+              ].map((line) => (
+                <li key={line} className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                  <span>{line}</span>
+                </li>
+              ))}
+            </ul>
+          </ChartCard>
+
+          <ChartCard
+            title="Delete account"
+            subtitle="Permanently remove your account and all associated data."
+          >
+            {settings.accountDeletionScheduled ? (
+              <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-4">
+                <p className="text-sm font-semibold text-destructive">
+                  Deletion scheduled for {new Date(settings.accountDeletionScheduled).toLocaleDateString()}
+                </p>
+                <p className="text-xs text-destructive/80 mt-1">You can still cancel until then.</p>
+                <button
+                  onClick={handleCancelDeletion}
+                  disabled={deleting}
+                  className="mt-3 h-10 px-4 rounded-xl bg-destructive text-destructive-foreground font-semibold text-sm disabled:opacity-70"
+                >
+                  {deleting ? "..." : "Cancel deletion"}
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <div className="flex-1">
+                  <label className="text-sm font-medium">Grace period (days)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={deletionDays}
+                    onChange={(e) => setDeletionDays(Number(e.target.value))}
+                    className="mt-1.5 w-full h-11 px-3 rounded-xl bg-background border border-border text-sm outline-none focus:border-primary focus:shadow-ring"
+                  />
+                </div>
+                <button
+                  onClick={handleScheduleDeletion}
+                  disabled={deleting}
+                  className="inline-flex items-center justify-center gap-2 h-11 px-4 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive font-semibold text-sm hover:bg-destructive/20 disabled:opacity-70"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  {deleting ? "Scheduling..." : "Schedule deletion"}
+                </button>
+              </div>
+            )}
+          </ChartCard>
+        </div>
+      )}
+
+      {activeTab === "support" && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <ChartCard title="Frequently asked" subtitle="Quick answers to common questions.">
+            <div className="space-y-2">
+              {(faqs.length ? faqs : FALLBACK_FAQS).map((faq, i) => (
+                <button
+                  key={i}
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  className="w-full text-left rounded-xl border border-border/60 bg-background/50 hover:bg-secondary/60 transition-colors"
+                >
+                  <div className="flex items-center justify-between p-3">
+                    <span className="text-sm font-semibold flex items-center gap-2">
+                      <HelpCircle className="w-4 h-4 text-primary" />
+                      {faq.question}
+                    </span>
+                    <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${openFaq === i ? "rotate-180" : ""}`} />
+                  </div>
+                  {openFaq === i && (
+                    <p className="px-3 pb-3 pt-0 text-sm text-muted-foreground text-pretty">
+                      {faq.answer}
+                    </p>
+                  )}
+                </button>
+              ))}
             </div>
+          </ChartCard>
 
-            <div className="p-6">
-              {/* Preferences Tab */}
-              {activeTab === "preferences" && (
-                <div>
-                  <h2 className="text-xl font-medium mb-4 text-gray-800 dark:text-white">Preferences</h2>
-                  <div className="space-y-6">
-                    <div>
-                      <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-                        Language
-                      </label>
-                      <select
-                        value={language}
-                        onChange={handleLanguageChange}
-                        className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option>English</option>
-                        <option>Spanish</option>
-                        <option>French</option>
-                      </select>
-                    </div>
+          <ChartCard title="Contact support" subtitle="We usually reply within 24h.">
+            <form onSubmit={handleContactSubmit} className="space-y-3">
+              <input
+                required
+                placeholder="Your name"
+                value={contactForm.name}
+                onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
+                className="w-full h-11 px-3 rounded-xl bg-background border border-border text-sm outline-none focus:border-primary focus:shadow-ring"
+              />
+              <input
+                required
+                type="email"
+                placeholder="Email"
+                value={contactForm.email}
+                onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
+                className="w-full h-11 px-3 rounded-xl bg-background border border-border text-sm outline-none focus:border-primary focus:shadow-ring"
+              />
+              <textarea
+                required
+                rows={4}
+                placeholder="How can we help?"
+                value={contactForm.message}
+                onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
+                className="w-full px-3 py-2.5 rounded-xl bg-background border border-border text-sm outline-none focus:border-primary focus:shadow-ring resize-none"
+              />
+              <button
+                type="submit"
+                disabled={sending}
+                className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 disabled:opacity-70"
+              >
+                {sending ? "Sending..." : "Send message"}
+              </button>
+            </form>
+          </ChartCard>
+        </div>
+      )}
 
-                    <div>
-                      <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Units</label>
-                      <div className="space-y-2">
-                        <div className="flex items-center">
-                          <input
-                            type="radio"
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                            checked={settings.useMetricSystem}
-                            onChange={() => setSettings({ ...settings, useMetricSystem: true })}
-                          />
-                          <label className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-                            Metric (kg, cm)
-                          </label>
-                        </div>
-                        <div className="flex items-center">
-                          <input
-                            type="radio"
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                            checked={!settings.useMetricSystem}
-                            onChange={() => setSettings({ ...settings, useMetricSystem: false })}
-                          />
-                          <label className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-                            Imperial (lb, ft)
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-
-                    <button 
-                      className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-                      onClick={handleSaveSettings}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? "Saving..." : "Save Preferences"}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Notifications Tab */}
-              {activeTab === "notifications" && (
-                <div>
-                  <h2 className="text-xl font-medium mb-4 text-gray-800 dark:text-white">Notification Settings</h2>
-                  <div className="space-y-6">
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                          <p className="text-gray-700 dark:text-gray-300">Email Notifications</p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Receive notifications via email
-                            </p>
-                          </div>
-                          <div className="relative inline-block w-12 h-6 transition duration-200 ease-in-out rounded-full cursor-pointer">
-                            <input
-                              type="checkbox"
-                              className="absolute w-0 h-0 opacity-0"
-                            checked={settings.emailNotifications}
-                            onChange={() => handleNotificationChange("emailNotifications")}
-                            />
-                            <label
-                              className={`block h-6 overflow-hidden rounded-full cursor-pointer ${
-                              settings.emailNotifications ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-600"
-                              }`}
-                            >
-                              <span
-                                className={`block h-6 w-6 rounded-full bg-white transform transition-transform duration-200 ease-in-out ${
-                                settings.emailNotifications ? "translate-x-6" : "translate-x-0"
-                                }`}
-                              ></span>
-                            </label>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-gray-700 dark:text-gray-300">Health Alerts</p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              Get notified about unusual changes in your health metrics
-                            </p>
-                          </div>
-                          <div className="relative inline-block w-12 h-6 transition duration-200 ease-in-out rounded-full cursor-pointer">
-                            <input
-                              type="checkbox"
-                              className="absolute w-0 h-0 opacity-0"
-                            checked={settings.healthAlerts}
-                              onChange={() => handleNotificationChange("healthAlerts")}
-                            />
-                            <label
-                              className={`block h-6 overflow-hidden rounded-full cursor-pointer ${
-                              settings.healthAlerts ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-600"
-                              }`}
-                            >
-                              <span
-                                className={`block h-6 w-6 rounded-full bg-white transform transition-transform duration-200 ease-in-out ${
-                                settings.healthAlerts ? "translate-x-6" : "translate-x-0"
-                                }`}
-                              ></span>
-                            </label>
-                        </div>
-                      </div>
-                    </div>
-
-                    <button 
-                      className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-                      onClick={handleSaveSettings}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? "Saving..." : "Save Notification Settings"}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Integrations Tab */}
-              {activeTab === "integrations" && (
-                <div>
-                  <h2 className="text-xl font-medium mb-4 text-gray-800 dark:text-white">Data Sources</h2>
-                  <div className="space-y-6">
-                    {/* Google Fit Integration */}
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-12 h-12 flex items-center justify-center bg-blue-100 dark:bg-blue-900 rounded-full">
-                            <FaGoogle className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                          </div>
-                          <div>
-                            <h3 className="text-lg font-medium text-gray-900 dark:text-white">Google Fit</h3>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              {settings.googleFitConnected
-                                ? "Connected - Automatically sync your health data"
-                                : "Connect to automatically sync your health data"}
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={handleGoogleFitConnection}
-                          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                            settings.googleFitConnected
-                              ? "bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50"
-                              : "bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50"
-                          }`}
-                        >
-                          {settings.googleFitConnected ? "Disconnect" : "Connect"}
-                        </button>
-                      </div>
-                      {settings.googleFitConnected && (
-                        <div className="mt-4 space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600 dark:text-gray-400">Last synced</span>
-                            <span className="text-gray-900 dark:text-white">2 minutes ago</span>
-                          </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600 dark:text-gray-400">Sync frequency</span>
-                            <span className="text-gray-900 dark:text-white">Every 30 minutes</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Manual Data Entry Section */}
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-12 h-12 flex items-center justify-center bg-green-100 dark:bg-green-900 rounded-full">
-                            <FaPen className="w-6 h-6 text-green-600 dark:text-green-400" />
-                          </div>
-                          <div>
-                            <h3 className="text-lg font-medium text-gray-900 dark:text-white">Manual Entry</h3>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              Add and manage your health data manually
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => navigate("/metrics")}
-                          className="px-4 py-2 bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50 rounded-md text-sm font-medium transition-colors"
-                        >
-                          Add Data
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Account Tab */}
-              {activeTab === "account" && (
-                <div>
-                  <h2 className="text-xl font-medium mb-4 text-gray-800 dark:text-white">Account Settings</h2>
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="text-lg font-medium mb-2 text-gray-700 dark:text-gray-300">Account Deletion</h3>
-                      {settings.accountDeletionScheduled ? (
-                      <div className="space-y-4">
-                          <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
-                            <p className="text-yellow-700 dark:text-yellow-300">
-                              Your account is scheduled for deletion on {settings.accountDeletionScheduled.toLocaleDateString()}.
-                            </p>
-                          </div>
-                          <button
-                            onClick={handleCancelDeletion}
-                            disabled={isDeletingAccount}
-                            className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 transition"
-                          >
-                            {isDeletingAccount ? "Cancelling..." : "Cancel Account Deletion"}
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                            <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4">
-                            <p className="text-red-700 dark:text-red-300">
-                              Warning: This action cannot be undone. All your data will be permanently deleted.
-                            </p>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-                              Deletion Delay (days)
-                            </label>
-                            <input
-                              type="number"
-                              min="1"
-                              max="90"
-                              value={accountDeletionDays}
-                              onChange={(e) => setAccountDeletionDays(Number(e.target.value))}
-                              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-blue-500 focus:border-blue-500"
-                            />
-                          </div>
-                          <button
-                            onClick={handleScheduleDeletion}
-                            disabled={isDeletingAccount}
-                            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
-                          >
-                            {isDeletingAccount ? "Scheduling..." : "Schedule Account Deletion"}
-                          </button>
-                        </div>
-                      )}
-                      {deletionError && (
-                        <div className="mt-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4">
-                          <p className="text-red-700 dark:text-red-300">{deletionError}</p>
-                        </div>
-                      )}
-                      {deletionSuccess && (
-                        <div className="mt-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                          <p className="text-green-700 dark:text-green-300">
-                            {settings.accountDeletionScheduled ? "Account deletion cancelled successfully!" : "Account deletion scheduled successfully!"}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm animate-slide-up">
+          <div
+            className={cn(
+              "flex items-center gap-2 rounded-xl px-4 py-3 shadow-pop border",
+              toast.tone === "ok"
+                ? "bg-metric-active/15 border-metric-active/30 text-metric-active"
+                : "bg-destructive/10 border-destructive/30 text-destructive"
+            )}
+          >
+            {toast.tone === "ok" ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+            <span className="text-sm font-medium">{toast.text}</span>
           </div>
         </div>
-      </main>
+      )}
     </div>
   )
 }
+
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
+        checked ? "bg-primary" : "bg-secondary"
+      )}
+    >
+      <span
+        className={cn(
+          "inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform",
+          checked ? "translate-x-5" : "translate-x-0.5"
+        )}
+      />
+    </button>
+  )
+}
+
+function ToggleRow({
+  Icon,
+  title,
+  description,
+  checked,
+  onChange,
+}: {
+  Icon: React.ComponentType<{ className?: string }>
+  title: string
+  description: string
+  checked: boolean
+  onChange: (v: boolean) => void
+}) {
+  return (
+    <div className="flex items-center justify-between py-3">
+      <div className="flex items-center gap-3 min-w-0">
+        <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
+        <div className="min-w-0">
+          <p className="text-sm font-semibold truncate">{title}</p>
+          <p className="text-xs text-muted-foreground truncate">{description}</p>
+        </div>
+      </div>
+      <Toggle checked={checked} onChange={onChange} />
+    </div>
+  )
+}
+
+const FALLBACK_FAQS: Faq[] = [
+  { question: "How is my health data secured?", answer: "Your data is encrypted in transit and at rest, and never shared." },
+  { question: "Can I export my data?", answer: "Yes — from Profile → Export data. CSV and JSON supported." },
+  { question: "How accurate are AI insights?", answer: "They're based on patterns in your data plus general health guidelines. Not medical advice." },
+  { question: "How do I connect Google Fit?", answer: "Settings → Connections → Connect. Grant permissions when prompted." },
+]

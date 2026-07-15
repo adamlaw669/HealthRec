@@ -113,8 +113,8 @@ export default function AuthCallback() {
             log('Storing tokens from response');
             try {
               localStorage.setItem('token', userData.token);
-              if (userData.refresh) {
-                localStorage.setItem('refresh', userData.refresh);
+              if ((userData as any).refresh) {
+                localStorage.setItem('refresh', (userData as any).refresh);
               }
               
               // Verify storage worked
@@ -131,7 +131,7 @@ export default function AuthCallback() {
               setLoading(false);
               navigate('/?mode=signin&error=storage_failed');
             }
-          } else if (userData && userData.redirected) {
+          } else if (userData && (userData as any).redirected) {
             log('Redirect handled by googleCallback function');
             setLoading(false);
             // The redirect will happen automatically, no need to navigate

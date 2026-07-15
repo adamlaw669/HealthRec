@@ -1,175 +1,75 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { googleCallback } from '../../api/api';
-
-// Debug component to show logs in case of errors
-interface DebugInfoProps {
-  error: string | null;
-  logs: string[];
-}
-
-const DebugInfo: React.FC<DebugInfoProps> = ({ error, logs }) => {
-  if (!error) return null;
-  
-  return (
-    <div className="mt-4 p-4 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono max-h-[30vh] overflow-auto">
-      <h3 className="text-red-500 mb-2">Error: {error}</h3>
-      {logs.length > 0 && (
-        <div>
-          <h4 className="text-gray-700 dark:text-gray-300 mb-1">Debug logs:</h4>
-          {logs.map((log, i) => (
-            <div key={i} className="text-gray-600 dark:text-gray-400">
-              {log}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
+import { useEffect, useState } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
+import { googleCallback } from "../../api/api"
+import { useUser } from "../../context/UserContext"
+import { AlertCircle, Loader2, Heart } from "lucide-react"
 
 const GoogleCallback = () => {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const [error, setError] = useState<string | null>(null);
-  const [logs, setLogs] = useState<string[]>([]);
-
-  const addLog = (message: string) => {
-    console.log(message);
-    setLogs(prev => [...prev, message]);
-  };
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const { setUser } = useUser()
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // First check if we have tokens directly in URL (server-side flow)
-        const token = searchParams.get('token');
-        const refresh = searchParams.get('refresh');
-        
-        addLog(`Checking for tokens in URL: token=${!!token}, refresh=${!!refresh}`);
-        addLog(`URL params: ${JSON.stringify(Object.fromEntries(searchParams.entries()))}`);
-        
-        if (token && refresh) {
-          addLog('Tokens found in URL, storing directly');
-          try {
-            // First clear any existing tokens to avoid conflicts
-            localStorage.removeItem('token');
-            localStorage.removeItem('refresh');
-            
-            // Store tokens in localStorage
-            localStorage.setItem('token', token);
-            localStorage.setItem('refresh', refresh);
-            
-            // Verify storage worked
-            const storedToken = localStorage.getItem('token');
-            const storedRefresh = localStorage.getItem('refresh');
-            
-            if (!storedToken || !storedRefresh) {
-              throw new Error('Failed to store tokens in localStorage');
-            }
-            
-            addLog('Authentication successful via redirect with tokens');
-            
-            // Allow a slight delay for token to be properly set before redirecting
-            setTimeout(() => {
-              navigate('/dashboard');
-            }, 500);
-            return;
-          } catch (storageError: any) {
-            addLog(`LocalStorage error: ${storageError.message}`);
-            // Continue to code-based authentication as fallback
-          }
-        }
-        
-        // If no tokens, check for authorization code (client-side flow)
-        const code = searchParams.get('code');
-        addLog(`Authorization code present: ${!!code}`);
-        
-        if (!code) {
-          throw new Error('No authorization code or tokens received');
-        }
+        const code = searchParams.get("code")
+        if (!code) throw new Error("No authorization code received from Google")
 
-        addLog(`Exchanging code for token: ${code.substring(0, 10)}...`);
-        const response = await googleCallback(code);
-        addLog(`Response received with keys: ${Object.keys(response).join(', ')}`);
-        
-        if (response.token) {
-          addLog('Token found in response, storing tokens');
-          try {
-            // First clear any existing tokens
-            localStorage.removeItem('token');
-            localStorage.removeItem('refresh');
-            
-            // Store new tokens
-            localStorage.setItem('token', response.token);
-            if (response.refresh) {
-              localStorage.setItem('refresh', response.refresh);
-            }
-            
-            // Verify storage
-            const storedToken = localStorage.getItem('token');
-            if (!storedToken) {
-              throw new Error('Failed to store token in localStorage');
-            }
-            
-            addLog('Authentication successful via code exchange');
-            
-            // Allow a slight delay for token to be properly set before redirecting
-            setTimeout(() => {
-              navigate('/dashboard');
-            }, 500);
-          } catch (storageError: any) {
-            throw new Error(`LocalStorage error: ${storageError.message}`);
-          }
-        } else if (response.redirected && response.location) {
-          addLog(`Received redirect to: ${response.location}`);
-          window.location.href = response.location;
+        const data = await googleCallback(code)
+
+        if (data.token && data.user) {
+          localStorage.setItem("token", data.token)
+          localStorage.setItem("user", JSON.stringify(data.user))
+          setUser({ name: data.user.name || "", email: data.user.email || "" })
+          navigate("/dashboard")
         } else {
-          // Try to extract any useful error information from the response
-          const errorMessage = response.error || response.message || 'Invalid response format';
-          addLog(`Error in response: ${errorMessage}`);
-          throw new Error(errorMessage);
+          throw new Error(data.error || "Authentication failed — no token returned")
         }
-      } catch (error: any) {
-        console.error('Google callback error:', error);
-        setError(error.message || 'Authentication failed');
-        addLog(`Error during authentication: ${error.message}`);
-        
-        // Don't navigate away immediately so user can see the error
-        setTimeout(() => {
-          navigate('/auth?mode=signin&error=google_login_failed');
-        }, 5000);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Authentication failed"
+        setError(message)
+        setTimeout(() => navigate("/auth?mode=signin&error=google_login_failed"), 4000)
       }
-    };
+    }
 
-    handleCallback();
-  }, [searchParams, navigate]);
+    handleCallback()
+  }, [searchParams, navigate, setUser])
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4">
-      <div className="text-center">
-        {!error && (
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <div className="max-w-sm w-full text-center animate-fade-in-up">
+        <div className="mx-auto inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary text-primary-foreground shadow-pop mb-6">
+          <Heart className="w-6 h-6" fill="currentColor" />
+        </div>
+
+        {!error ? (
           <>
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-            <p className="mt-4 text-gray-600 dark:text-gray-300">Processing login...</p>
+            <Loader2 className="w-8 h-8 mx-auto animate-spin text-primary" />
+            <h1 className="mt-4 font-display font-bold text-xl">Signing you in…</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Just a moment while we set things up.
+            </p>
           </>
-        )}
-        {error && (
+        ) : (
           <>
-            <div className="text-red-500 text-xl mb-4">Authentication Failed</div>
-            <p className="mb-4">Redirecting to login page in a few seconds...</p>
-            <button 
-              onClick={() => navigate('/auth?mode=signin')}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-destructive/10 text-destructive">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <h1 className="mt-4 font-display font-bold text-xl">Authentication failed</h1>
+            <p className="mt-2 text-sm text-muted-foreground text-pretty">{error}</p>
+            <p className="mt-2 text-xs text-muted-foreground">Redirecting to login…</p>
+            <button
+              onClick={() => navigate("/auth?mode=signin")}
+              className="mt-5 h-10 px-5 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 text-sm"
             >
-              Return to Login
+              Return to login
             </button>
           </>
         )}
-        <DebugInfo error={error} logs={logs} />
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default GoogleCallback; 
+export default GoogleCallback

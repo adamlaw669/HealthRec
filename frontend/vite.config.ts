@@ -13,7 +13,8 @@ export default defineConfig({
     },
   },
   define: {
-    'process.env': process.env,
+    // Only expose VITE_-prefixed env vars — everything else stays server-side.
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
     global: 'globalThis',
   },
   server: {

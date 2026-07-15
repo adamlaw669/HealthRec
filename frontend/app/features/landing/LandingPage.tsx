@@ -1,488 +1,547 @@
-import { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
-import Slider from "react-slick"
-import "slick-carousel/slick/slick.css"
-import "slick-carousel/slick/slick-theme.css"
-import { FaMoon, FaSun } from "react-icons/fa"
-import "../../../assets/styles/background-effects.css"
-import { teamPlaceholders } from "../../utils/placeholders"
-//import { authAPI } from "../../api/api"
-import { getInitialTheme, toggleTheme } from "../../utils/theme-utils"
-import { FaGoogle,  FaPencilAlt, FaBrain, FaShieldAlt } from "react-icons/fa" // icons for features
+import { Link, useNavigate } from "react-router-dom"
+import { useState } from "react"
+import {
+  Heart,
+  Activity,
+  Brain,
+  ShieldCheck,
+  Sparkles,
+  ArrowRight,
+  Check,
+  Moon,
+  Sun,
+  Menu,
+  X,
+  Star,
+  Zap,
+  Play,
+} from "lucide-react"
+import { useTheme } from "../../context/ThemeContext"
+import { useUser } from "../../context/UserContext"
+import { supportAPI } from "../../api/api"
 
-interface Testimonial {
-  author: string
-  text: string
-}
-
-const testimonials: Testimonial[] = [
+const FEATURES = [
   {
-    author: "Mr. Yomi Denzel",
-    text: "HealthRec Engine has revolutionized my daily routine. The recommendations are spot-on!",
+    Icon: Brain,
+    title: "AI-powered insights",
+    description:
+      "GPT-driven daily summaries and correlation insights across your sleep, activity, and heart data.",
   },
-  { author: "Mr. Kaanu Olaniyi", text: "I love how detailed yet easy-to-read my health metrics are. A game changer!" },
-  { author: "Hon Wasilat Adegoke", text: "Simple, intuitive, and packed with powerful insights. Highly recommended!" },
-  { author: "Mr Azuibike Ishiekwene", text: "I now feel more in control of my health thanks to HealthRec Engine." },
   {
-    author: "Mr. Victor",
-    text: "The personalized insights make all the difference. It's like having a coach in my pocket!",
+    Icon: Activity,
+    title: "All your metrics, one view",
+    description:
+      "Steps, sleep, heart rate, weight, calories, active minutes — beautifully visualized and connected.",
   },
-  { author: "Ladipo Samuel", text: "Tracking my health has never been easier. This app is a must-have!" },
-  { author: "Adesipe Emmanuel", text: "A state-of-the-art tool that delivers exactly what I need to stay healthy. realy glad to have come across it." },
-  { author: "Daniel Martinez", text: "HealthRec Engine's interface is super attractive and easy to use." },
-  { author: "Olivia Anderson", text: "Finally, an app that understands my health goals and helps me reach them." },
-  { author: "Liam Thomas", text: "I can't imagine going back to the old way of tracking health. This is fantastic!" },
+  {
+    Icon: Heart,
+    title: "Google Fit sync",
+    description:
+      "One-click connect. Your Google Fit data flows in automatically — no manual logging needed.",
+  },
+  {
+    Icon: ShieldCheck,
+    title: "Private by design",
+    description:
+      "Your health data is yours. We store the minimum needed and let you export or delete anytime.",
+  },
 ]
 
-const teamMembers = teamPlaceholders
+const STEPS = [
+  {
+    number: "01",
+    title: "Sign in with Google",
+    description: "One click and you're in — no long signup forms, no verification email.",
+  },
+  {
+    number: "02",
+    title: "Connect Google Fit",
+    description: "Grant access once. We'll pull steps, heart rate, sleep, and calories automatically.",
+  },
+  {
+    number: "03",
+    title: "Get personal insights",
+    description: "Open your dashboard and see AI recommendations tailored to your data.",
+  },
+]
+
+const TESTIMONIALS = [
+  {
+    quote: "The daily AI summary is the first thing I read every morning. It's like having a coach.",
+    author: "Yomi D.",
+    role: "Endurance runner",
+  },
+  {
+    quote: "I finally understand how my sleep affects my heart rate. The correlations are eye-opening.",
+    author: "Olivia A.",
+    role: "Software engineer",
+  },
+  {
+    quote: "Clean, fast, and it actually made me care about my metrics. That's a first.",
+    author: "Liam T.",
+    role: "Founder",
+  },
+]
+
+const STATS = [
+  { value: "12M+", label: "Data points analyzed" },
+  { value: "94%", label: "Retention after week 1" },
+  { value: "4.8", label: "Average rating" },
+]
 
 export default function LandingPage() {
-  const [darkMode, setDarkMode] = useState(false)
+  const { darkMode, toggleTheme } = useTheme()
+  const { signInDemo } = useUser()
+  const navigate = useNavigate()
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [contact, setContact] = useState({ name: "", email: "", message: "" })
+  const [submitting, setSubmitting] = useState(false)
+  const [submitState, setSubmitState] = useState<"idle" | "ok" | "err">("idle")
 
-  // Add contact form state
-  const [contactForm, setContactForm] = useState({
-    email: '',
-    subject: '',
-    message: ''
-  })
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submitSuccess, setSubmitSuccess] = useState(false)
-  const [submitError, setSubmitError] = useState<string | null>(null)
-
-  // Add contact form handlers
-  const handleContactInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setContactForm({
-      ...contactForm,
-      [e.target.name]: e.target.value
-    })
+  const handleDemo = () => {
+    signInDemo()
+    setTimeout(() => navigate("/dashboard"), 150)
   }
 
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
-    setSubmitError(null)
-    setSubmitSuccess(false)
-
+    setSubmitting(true)
+    setSubmitState("idle")
     try {
-      // TODO: Implement contact form submission
-      // For now, just simulate a successful submission
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      setSubmitSuccess(true)
-      setContactForm({ email: '', subject: '', message: '' })
-    } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Failed to send message')
+      await supportAPI.contactSupport(contact.name, contact.email, contact.message)
+      setSubmitState("ok")
+      setContact({ name: "", email: "", message: "" })
+    } catch {
+      setSubmitState("err")
     } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  // Initialize theme on component mount
-  useEffect(() => {
-    const initialDarkMode = getInitialTheme()
-    setDarkMode(initialDarkMode)
-  }, [])
-
-  const handleToggleTheme = () => {
-    const newDarkMode = toggleTheme(darkMode)
-    setDarkMode(newDarkMode)
-  }
-/*
-  const handleGoogleLogin = async () => {
-    try {
-      await authAPI.googleLogin()
-    } catch (error) {
-      console.error("Failed to initiate Google login:", error)
-    }
-  }
-*/
-  // Settings for the testimonials slider
-  const testimonialSettings = {
-    dots: true,
-    infinite: true,
-    speed: 600,
-    slidesToShow: 1,
-    slidesToScroll: 1,
-    autoplay: true,
-    autoplaySpeed: 4000,
-    pauseOnHover: true,
-  }
-
-  // Settings for the team members slider
-  const teamSettings = {
-    dots: false,
-    infinite: true,
-    speed: 600,
-    slidesToShow: 3,
-    slidesToScroll: 1,
-    autoplay: true,
-    autoplaySpeed: 3000,
-    responsive: [
-      { breakpoint: 1024, settings: { slidesToShow: 2 } },
-      { breakpoint: 640, settings: { slidesToShow: 1 } },
-    ],
-  }
-
-  // Add scroll function
-  const scrollToSection = (sectionId: string) => {
-    const element = document.getElementById(sectionId)
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' })
+      setSubmitting(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900">
-      {/* Top Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <div className="flex items-center">
-              <Link to="/" className="flex items-center">
-                <img src="/healthreclogo.png" alt="HealthRec Logo" className="h-8 w-8" />
-                <span className="ml-2 text-xl font-bold text-gray-900 dark:text-white">HealthRec</span>
-              </Link>
-            </div>
+    <div className="relative min-h-screen bg-background text-foreground overflow-x-hidden">
+      {/* Very subtle background — pattern, not a gradient wash */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[600px] bg-grid" aria-hidden />
 
-            {/* Navigation Links */}
-            <div className="hidden md:flex items-center space-x-8">
-              <button
-                onClick={() => scrollToSection('features')}
-                className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors"
-              >
-                Features
-              </button>
-              <button
-                onClick={() => scrollToSection('about')}
-                className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors"
-              >
-                About
-              </button>
-              <button
-                onClick={() => scrollToSection('contact')}
-                className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors"
-              >
-                Contact
-              </button>
-            </div>
+      {/* Nav */}
+      <header className="sticky top-0 z-40 backdrop-blur-lg bg-background/80 border-b border-border">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2.5">
+            <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-primary text-primary-foreground">
+              <Heart className="w-5 h-5" fill="currentColor" />
+            </span>
+            <span className="font-display font-bold text-lg tracking-tight">HealthRec</span>
+          </Link>
 
-            {/* Auth Buttons */}
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={handleToggleTheme}
-                className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors"
-                aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-              >
-                {darkMode ? <FaSun className="h-5 w-5" /> : <FaMoon className="h-5 w-5" />}
-              </button>
-              <Link
-                to="/auth?mode=signin"
-                className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors"
-              >
-                Sign in
-              </Link>
-              <Link 
-                to="/auth?mode=signup" 
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-              >
-                Sign up
-              </Link>
-            </div>
+          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
+            <a href="#features" className="hover:text-foreground transition-colors">Features</a>
+            <a href="#how" className="hover:text-foreground transition-colors">How it works</a>
+            <a href="#testimonials" className="hover:text-foreground transition-colors">Reviews</a>
+            <a href="#contact" className="hover:text-foreground transition-colors">Contact</a>
+          </nav>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleTheme}
+              className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+              aria-label="Toggle theme"
+            >
+              {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+            <button
+              onClick={handleDemo}
+              className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm font-semibold text-foreground hover:bg-secondary transition-colors"
+            >
+              <Play className="w-3.5 h-3.5" /> Demo
+            </button>
+            <Link
+              to="/auth"
+              className="hidden sm:inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+            >
+              Get started <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+            <button
+              onClick={() => setMobileOpen((v) => !v)}
+              className="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:bg-secondary"
+              aria-label="Menu"
+            >
+              {mobileOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+            </button>
           </div>
         </div>
-      </nav>
-
-      {/* Add padding to account for fixed navbar */}
-      <div className="pt-16">
-      {/* Hero Section */}
-      <section className="relative gradient-background pt-16 pb-20 lg:pt-24 lg:pb-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative z-10 text-center mx-auto max-w-2xl">
-        <main className="mt-10 mx-auto max-w-7xl px-4 sm:mt-12 sm:px-6 md:mt-16 lg:mt-20 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-4xl tracking-tight font-extrabold text-white sm:text-5xl md:text-6xl">
-          <span className="block">Your Personal</span>
-          <span className="block text-blue-200">Health Companion</span>
-            </h1>
-            <p className="mt-3 text-base text-gray-100 sm:mt-5 sm:text-lg sm:max-w-xl sm:mx-auto md:mt-5 md:text-xl">
-          Track your health metrics, get AI-powered insights, and make informed decisions about your well-being.
-            </p>
-            <div className="mt-5 sm:mt-8 flex justify-center">
-          <div className="rounded-md shadow">
-            <Link
-              to="/auth?mode=signup"
-              className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-blue-600 bg-white hover:bg-blue-50 md:py-4 md:text-lg md:px-10 transition-colors"
+        {mobileOpen && (
+          <div className="md:hidden border-t border-border px-4 py-4 space-y-2 bg-background">
+            {[
+              ["Features", "#features"],
+              ["How it works", "#how"],
+              ["Reviews", "#testimonials"],
+              ["Contact", "#contact"],
+            ].map(([label, href]) => (
+              <a
+                key={href}
+                href={href}
+                onClick={() => setMobileOpen(false)}
+                className="block px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
+              >
+                {label}
+              </a>
+            ))}
+            <button
+              onClick={() => { setMobileOpen(false); handleDemo() }}
+              className="w-full text-left px-3 py-2 rounded-md text-sm font-semibold text-primary"
             >
-              Get Started
+              <Play className="w-3.5 h-3.5 inline mr-1.5" /> Try demo
+            </button>
+            <Link
+              to="/auth"
+              className="block px-3 py-2 rounded-md text-sm font-semibold bg-primary text-primary-foreground text-center"
+            >
+              Get started
             </Link>
           </div>
-          <div className="mt-0 ml-3">
-            <Link
-              to="/auth?mode=signin"
-              className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 md:py-4 md:text-lg md:px-10 transition-colors"
-            >
-              Sign In
-            </Link>
-          </div>
+        )}
+      </header>
+
+      {/* Hero */}
+      <section className="relative">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-16 pb-20 sm:pt-24 sm:pb-28 lg:pt-32">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="animate-fade-in-up">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary border border-border text-foreground text-xs font-semibold">
+                <Sparkles className="w-3.5 h-3.5 text-primary" />
+                Powered by GPT
+              </div>
+              <h1 className="mt-6 text-4xl sm:text-5xl lg:text-6xl font-display font-bold tracking-tight text-balance leading-[1.05]">
+                Your health,{" "}
+                <span className="text-primary">understood</span> — not just tracked.
+              </h1>
+              <p className="mt-6 text-lg text-muted-foreground text-pretty max-w-xl">
+                Connect Google Fit and get daily AI-crafted insights that connect
+                the dots across your sleep, activity, heart, and weight — so you
+                actually know what to change.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <button
+                  onClick={handleDemo}
+                  className="inline-flex items-center gap-2 h-12 px-6 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
+                >
+                  <Zap className="w-4 h-4" fill="currentColor" /> Try live demo
+                </button>
+                <Link
+                  to="/auth"
+                  className="inline-flex items-center gap-2 h-12 px-6 rounded-lg bg-card border border-border font-semibold hover:bg-secondary transition-colors"
+                >
+                  Sign up free <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+              <div className="mt-8 flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-4 h-4 text-accent" /> No credit card
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-4 h-4 text-accent" /> 30-second setup
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-4 h-4 text-accent" /> Cancel anytime
+                </div>
+              </div>
+            </div>
+
+            <div className="relative animate-fade-in-up" style={{ animationDelay: "80ms" }}>
+              <HeroMock />
             </div>
           </div>
-        </main>
+
+          <div className="mt-16 grid grid-cols-3 gap-4 max-w-2xl mx-auto lg:mx-0">
+            {STATS.map((s) => (
+              <div key={s.label} className="rounded-xl bg-card border border-border p-4 text-center">
+                <div className="text-2xl sm:text-3xl font-display font-bold text-foreground tabular-nums">
+                  {s.value}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">{s.label}</div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-        <section id="features" className="py-12 bg-white dark:bg-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="lg:text-center">
-            <h2 className="text-base text-blue-600 font-semibold tracking-wide uppercase">Features</h2>
-            <p className="mt-2 text-3xl leading-8 font-extrabold tracking-tight text-gray-900 dark:text-white sm:text-4xl">
-              Everything you need to track your health
+      {/* Features */}
+      <section id="features" className="relative py-20 sm:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="max-w-2xl">
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary">Features</p>
+            <h2 className="mt-2 text-3xl sm:text-4xl font-display font-bold tracking-tight text-balance">
+              Everything you need to actually improve.
+            </h2>
+            <p className="mt-4 text-muted-foreground text-pretty">
+              We do the hard work of stitching your data together and translating it
+              into changes you can actually make.
             </p>
           </div>
 
-          <div className="mt-10">
-            <div className="space-y-10 md:space-y-0 md:grid md:grid-cols-2 md:gap-x-8 md:gap-y-10">
-                {/* Manual Data Entry */}
-                <div className="relative">
-                  <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-blue-500 text-white">
-                    <FaPencilAlt className="h-6 w-6" />
-                  </div>
-                  <div className="ml-16">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">Manual Data Entry</h3>
-                    <p className="mt-2 text-base text-gray-500 dark:text-gray-400">
-                      Record your health metrics manually and keep track of your progress over time.
-                    </p>
-                  </div>
+          <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {FEATURES.map(({ Icon, title, description }) => (
+              <div
+                key={title}
+                className="rounded-2xl bg-card border border-border p-6 hover:border-foreground/20 transition-colors"
+              >
+                <div className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-primary/10 text-primary">
+                  <Icon className="w-5 h-5" />
                 </div>
-
-              {/* Google Fit Integration */}
-              <div className="relative">
-                <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-blue-500 text-white">
-                  <FaGoogle className="h-6 w-6" />
-                </div>
-                <div className="ml-16">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">Google Fit Integration</h3>
-                  <p className="mt-2 text-base text-gray-500 dark:text-gray-400">
-                      Optional integration with Google Fit to automatically sync your health data.
-                  </p>
-                </div>
+                <h3 className="mt-4 font-display font-semibold text-lg text-foreground">
+                  {title}
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground text-pretty">
+                  {description}
+                </p>
               </div>
-
-                {/* AI Insights */}
-              <div className="relative">
-                <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-blue-500 text-white">
-                    <FaBrain className="h-6 w-6" />
-                </div>
-                <div className="ml-16">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">AI-Powered Insights</h3>
-                  <p className="mt-2 text-base text-gray-500 dark:text-gray-400">
-                      Get personalized recommendations and insights based on your health data.
-                  </p>
-                </div>
-              </div>
-
-                {/* Data Privacy */}
-              <div className="relative">
-                <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-blue-500 text-white">
-                    <FaShieldAlt className="h-6 w-6" />
-                </div>
-                <div className="ml-16">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">Data Privacy</h3>
-                  <p className="mt-2 text-base text-gray-500 dark:text-gray-400">
-                      Your health data is encrypted and secure. You have full control over your information.
-                  </p>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* About Us Section */}
-        <section id="about" className="py-16 bg-gray-100 dark:bg-gray-900">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-3xl font-semibold text-gray-800 dark:text-white mb-6">About Us</h2>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            HealthRec Engine is dedicated to helping you monitor your health in a simple yet powerful way. Our mission
-            is to provide personalized insights that empower you to take control of your wellbeing.
-          </p>
-        </div>
-      </section>
+      {/* How it works */}
+      <section id="how" className="relative py-20 sm:py-24 bg-secondary/50">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="max-w-2xl">
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary">How it works</p>
+            <h2 className="mt-2 text-3xl sm:text-4xl font-display font-bold tracking-tight">
+              Three steps. Under a minute.
+            </h2>
+          </div>
 
-      {/* FAQ Section */}
-      <section className="py-16 bg-white dark:bg-gray-800">
-        <div className="max-w-4xl mx-auto px-4">
-          <h2 className="text-3xl font-semibold text-gray-800 dark:text-white mb-8 text-center">Frequently Asked Questions</h2>
-          <div className="space-y-6">
-            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">How does Google Fit integration work?</h3>
-              <p className="text-gray-600 dark:text-gray-300">
-                Our app securely connects to your Google Fit account to sync your health data. This includes steps, heart rate, sleep patterns, and other fitness metrics. You can control which data you want to share.
-              </p>
-            </div>
-            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">What kind of AI insights do you provide?</h3>
-              <p className="text-gray-600 dark:text-gray-300">
-                Our AI analyzes your health data to provide personalized recommendations, identify patterns, and suggest improvements to your health routine. The insights are based on your specific health goals and data.
-              </p>
-            </div>
-            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Is my health data secure?</h3>
-              <p className="text-gray-600 dark:text-gray-300">
-                Yes, we take data security seriously. All your health data is encrypted, and we follow strict privacy guidelines. You have full control over your data and can delete it at any time.
-              </p>
-            </div>
-            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">How often is my data updated?</h3>
-              <p className="text-gray-600 dark:text-gray-300">
-                Your Google Fit data is automatically synced every few minutes. You can also manually trigger a sync at any time from the dashboard.
-              </p>
-            </div>
+          <div className="mt-12 grid md:grid-cols-3 gap-6">
+            {STEPS.map((step) => (
+              <div
+                key={step.number}
+                className="rounded-2xl bg-card border border-border p-6"
+              >
+                <div className="inline-flex items-center justify-center h-8 w-8 rounded-md bg-primary/10 text-primary text-sm font-display font-bold tabular-nums">
+                  {step.number}
+                </div>
+                <h3 className="mt-4 font-display font-semibold text-lg">{step.title}</h3>
+                <p className="mt-2 text-sm text-muted-foreground text-pretty">{step.description}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section className="py-16 bg-white dark:bg-gray-800">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-3xl font-semibold text-gray-800 dark:text-white mb-6">What Our Users Say</h2>
-          <Slider {...testimonialSettings}>
-            {testimonials.map((testimonial, index) => (
-              <div key={index} className="px-4">
-                <blockquote className="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 glass-card">
-                  <p className="text-gray-600 dark:text-gray-300 italic">"{testimonial.text}"</p>
-                  <cite className="block mt-4 text-gray-800 dark:text-white font-bold">– {testimonial.author}</cite>
+      {/* Testimonials */}
+      <section id="testimonials" className="relative py-20 sm:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="max-w-2xl">
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary">Loved by users</p>
+            <h2 className="mt-2 text-3xl sm:text-4xl font-display font-bold tracking-tight">
+              Real people. Real changes.
+            </h2>
+          </div>
+
+          <div className="mt-12 grid md:grid-cols-3 gap-6">
+            {TESTIMONIALS.map((t) => (
+              <figure
+                key={t.author}
+                className="rounded-2xl bg-card border border-border p-6"
+              >
+                <div className="flex items-center gap-0.5 text-metric-calories">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4" fill="currentColor" />
+                  ))}
+                </div>
+                <blockquote className="mt-4 text-foreground text-pretty">
+                  &ldquo;{t.quote}&rdquo;
                 </blockquote>
-              </div>
+                <figcaption className="mt-6 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center text-sm">
+                    {t.author[0]}
+                  </div>
+                  <div>
+                    <div className="font-semibold text-sm">{t.author}</div>
+                    <div className="text-xs text-muted-foreground">{t.role}</div>
+                  </div>
+                </figcaption>
+              </figure>
             ))}
-          </Slider>
-        </div>
-      </section>
-
-      {/* Team Section */}
-      <section className="py-16 bg-gray-100 dark:bg-gray-900">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-3xl font-semibold text-gray-800 dark:text-white mb-6">Meet Our Team</h2>
-          <Slider {...teamSettings}>
-            {teamMembers.map((member, index) => (
-              <div key={index} className="px-4">
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 glass-card">
-                  <img
-                    src={member.image}
-                    alt={`Team Member ${member.name}`}
-                    className="w-24 h-24 rounded-full mx-auto mb-4 object-cover"
-                  />
-                  <h3 className="text-xl font-bold text-gray-800 dark:text-white">{member.name}</h3>
-                  <p className="text-gray-600 dark:text-gray-300">{member.role}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{member.description}</p>
-                </div>
-              </div>
-            ))}
-          </Slider>
-        </div>
-      </section>
-
-        {/* Call to Action */}
-      <section className="bg-blue-600 dark:bg-blue-800">
-        <div className="max-w-2xl mx-auto text-center py-16 px-4 sm:py-20 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-extrabold text-white sm:text-4xl">
-            <span className="block">Ready to start tracking your health?</span>
-          </h2>
-          <p className="mt-4 text-lg leading-6 text-blue-100">
-              Create your account today and take control of your health journey.
-          </p>
-            <Link
-              to="/auth?mode=signup"
-            className="mt-8 w-full sm:w-auto inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-blue-600 bg-white hover:bg-blue-50 transition-colors"
-          >
-              Get Started Now
-            </Link>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Contact Section */}
-        <section id="contact" className="py-16 bg-white dark:bg-gray-800">
-          <div className="max-w-4xl mx-auto px-4">
-            <h2 className="text-3xl font-semibold text-gray-800 dark:text-white mb-8 text-center">Contact Us</h2>
-            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-8">
-              <p className="text-gray-600 dark:text-gray-300 mb-6 text-center">
-                Have questions or need support? We're here to help!
-              </p>
-              <form onSubmit={handleContactSubmit} className="space-y-4">
-                <div>
-                  <label htmlFor="contact-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    id="contact-email"
-                    name="email"
-                    value={contactForm.email}
-                    onChange={handleContactInputChange}
-                    required
-                    className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter your email"
-                  />
+      {/* CTA + Contact */}
+      <section id="contact" className="relative py-20 sm:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="rounded-3xl bg-foreground text-background p-8 sm:p-12">
+            <div className="grid lg:grid-cols-2 gap-8 items-center">
+              <div>
+                <h2 className="text-3xl sm:text-4xl font-display font-bold tracking-tight text-balance">
+                  Ready to actually understand your health?
+                </h2>
+                <p className="mt-4 text-background/70 text-pretty">
+                  Free forever. No credit card. Try the demo and see your first insight in seconds.
+                </p>
+                <div className="mt-8 flex flex-wrap items-center gap-3">
+                  <button
+                    onClick={handleDemo}
+                    className="inline-flex items-center gap-2 h-12 px-6 rounded-lg bg-background text-foreground font-semibold hover:bg-background/95 transition-colors"
+                  >
+                    <Zap className="w-4 h-4" fill="currentColor" /> Try demo
+                  </button>
+                  <Link
+                    to="/auth"
+                    className="inline-flex items-center gap-2 h-12 px-6 rounded-lg bg-background/10 border border-background/20 text-background font-semibold hover:bg-background/20 transition-colors"
+                  >
+                    Get started <ArrowRight className="w-4 h-4" />
+                  </Link>
                 </div>
-                <div>
-                  <label htmlFor="contact-subject" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Subject
-                  </label>
-                  <input
-                    type="text"
-                    id="contact-subject"
-                    name="subject"
-                    value={contactForm.subject}
-                    onChange={handleContactInputChange}
-                    required
-                    className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter subject"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="contact-message" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Message
-                  </label>
-                  <textarea
-                    id="contact-message"
-                    name="message"
-                    value={contactForm.message}
-                    onChange={handleContactInputChange}
-                    required
-                    rows={4}
-                    className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter your message"
-                  />
-                </div>
+              </div>
+
+              <form
+                onSubmit={handleContactSubmit}
+                className="rounded-2xl bg-background/5 border border-background/15 p-5 space-y-3"
+              >
+                <p className="text-sm font-semibold">Have a question?</p>
+                <input
+                  required
+                  placeholder="Your name"
+                  value={contact.name}
+                  onChange={(e) => setContact({ ...contact, name: e.target.value })}
+                  className="w-full h-11 px-3 rounded-lg bg-background/10 border border-background/15 text-sm text-background placeholder:text-background/50 outline-none focus:border-background/40"
+                />
+                <input
+                  required
+                  type="email"
+                  placeholder="Email"
+                  value={contact.email}
+                  onChange={(e) => setContact({ ...contact, email: e.target.value })}
+                  className="w-full h-11 px-3 rounded-lg bg-background/10 border border-background/15 text-sm text-background placeholder:text-background/50 outline-none focus:border-background/40"
+                />
+                <textarea
+                  required
+                  rows={3}
+                  placeholder="How can we help?"
+                  value={contact.message}
+                  onChange={(e) => setContact({ ...contact, message: e.target.value })}
+                  className="w-full px-3 py-2.5 rounded-lg bg-background/10 border border-background/15 text-sm text-background placeholder:text-background/50 outline-none focus:border-background/40 resize-none"
+                />
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
+                  disabled={submitting}
+                  className="w-full h-11 rounded-lg bg-background text-foreground font-semibold disabled:opacity-70 hover:bg-background/95 transition-colors"
                 >
-                  {isSubmitting ? 'Sending...' : 'Send Message'}
-          </button>
-                {submitSuccess && (
-                  <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
-                    <p className="text-green-400 text-sm">Message sent successfully!</p>
-                  </div>
+                  {submitting ? "Sending…" : "Send message"}
+                </button>
+                {submitState === "ok" && (
+                  <p className="text-xs text-background/80">Thanks — we'll get back to you.</p>
                 )}
-                {submitError && (
-                  <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
-                    <p className="text-red-400 text-sm">{submitError}</p>
-                  </div>
+                {submitState === "err" && (
+                  <p className="text-xs text-background/80">Couldn't send. Try again.</p>
                 )}
               </form>
             </div>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-6 bg-gray-900 text-center text-gray-400">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          &copy; {new Date().getFullYear()} HealthRec Engine. All rights reserved.
+      <footer className="border-t border-border py-10">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-primary text-primary-foreground">
+              <Heart className="w-3 h-3" fill="currentColor" />
+            </span>
+            <span>© {new Date().getFullYear()} HealthRec</span>
+          </div>
+          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+            <a href="#" className="hover:text-foreground">Privacy</a>
+            <a href="#" className="hover:text-foreground">Terms</a>
+            <a href="#contact" className="hover:text-foreground">Contact</a>
+          </div>
         </div>
       </footer>
+    </div>
+  )
+}
+
+function HeroMock() {
+  return (
+    <div className="relative">
+      <div className="relative rounded-2xl bg-card border border-border shadow-pop overflow-hidden">
+        <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-border bg-secondary/50">
+          <span className="w-2.5 h-2.5 rounded-full bg-destructive/70" />
+          <span className="w-2.5 h-2.5 rounded-full bg-metric-calories/70" />
+          <span className="w-2.5 h-2.5 rounded-full bg-accent/70" />
+          <span className="ml-3 text-xs text-muted-foreground">healthrec.app / dashboard</span>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-muted-foreground">Good morning, Adam</p>
+              <p className="font-display font-bold text-lg">Today's ring</p>
+            </div>
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-accent/15 text-accent">
+              +12% vs. avg
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <svg width="88" height="88" className="-rotate-90">
+              <circle cx="44" cy="44" r="36" fill="none" strokeWidth="10" className="stroke-secondary" />
+              <circle
+                cx="44"
+                cy="44"
+                r="36"
+                fill="none"
+                strokeWidth="10"
+                strokeLinecap="round"
+                className="stroke-primary"
+                strokeDasharray={2 * Math.PI * 36}
+                strokeDashoffset={2 * Math.PI * 36 * 0.18}
+              />
+            </svg>
+            <div>
+              <div className="text-3xl font-display font-bold tabular-nums">82%</div>
+              <div className="text-xs text-muted-foreground">of daily goal</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: "Heart", value: "72", unit: "bpm", color: "text-metric-heart", bg: "bg-metric-heart/10" },
+              { label: "Steps", value: "8.2k", unit: "", color: "text-metric-steps", bg: "bg-metric-steps/10" },
+              { label: "Kcal", value: "420", unit: "", color: "text-metric-calories", bg: "bg-metric-calories/10" },
+            ].map((s) => (
+              <div key={s.label} className={`rounded-lg p-3 ${s.bg}`}>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {s.label}
+                </div>
+                <div className={`mt-0.5 font-display font-bold text-lg tabular-nums ${s.color}`}>
+                  {s.value}
+                  {s.unit && <span className="ml-0.5 text-xs">{s.unit}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-lg bg-secondary/60 border-l-2 border-primary px-3 py-2.5">
+            <div className="flex items-center gap-2 text-xs font-semibold text-primary mb-1">
+              <Sparkles className="w-3.5 h-3.5" /> AI insight
+            </div>
+            <p className="text-xs text-foreground text-pretty">
+              Your resting HR dropped 4 bpm on days you slept over 7h. Aim for
+              early sleep tonight.
+            </p>
+          </div>
+
+          <div className="flex items-end justify-between h-14 gap-1.5">
+            {[30, 44, 38, 60, 52, 74, 66, 88, 72, 92, 80, 68].map((h, i) => (
+              <div
+                key={i}
+                className="flex-1 rounded-t-md bg-primary/70"
+                style={{ height: `${h}%` }}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )

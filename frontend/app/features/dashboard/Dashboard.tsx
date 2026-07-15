@@ -1,808 +1,505 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import Sidebar from "../../components/Sidebar"
-import { Line, Doughnut, Bar } from "react-chartjs-2"
-import { FaWalking, FaBed, FaHeartbeat, FaWeight, FaAppleAlt, FaRunning, FaMoon, FaSun, FaBrain, FaInfoCircle, FaPlus } from "react-icons/fa"
-import { useSidebar } from "../../context/SidebarContext"
-import "chart.js/auto"
-import { healthAPI } from "../../api/api"
-import { getInitialTheme, toggleTheme } from "../../utils/theme-utils"
-import AIStatus from "../../components/AIStatus"
-import { HealthInterpreter } from "../../../components/ui/HealthInterpreter"
+import {
+  Heart,
+  Footprints,
+  Moon,
+  Flame,
+  Timer,
+  Scale,
+  Sparkles,
+  Plus,
+  RefreshCw,
+  ArrowRight,
+  Lightbulb,
+  X,
+  Zap,
+} from "lucide-react"
+import { healthAPI, demoMode } from "../../api/api"
+import { useUser } from "../../context/UserContext"
+import { StatCard } from "../../components/ui/StatCard"
+import { ChartCard, SectionHeader } from "../../components/ui/ChartCard"
+import { TrendChart, TrendPoint } from "../../components/ui/TrendChart"
+import { ProgressRing } from "../../components/ui/ProgressRing"
+import { StatCardSkeleton, ChartSkeleton, Skeleton } from "../../components/ui/Skeleton"
+
+interface MetricValue { value: number }
+interface Metrics {
+  steps: MetricValue
+  sleep: MetricValue
+  heartRate: MetricValue
+  weight: MetricValue
+  calories: MetricValue
+  activeMinutes: MetricValue
+}
+
+interface WeeklyTrends {
+  steps: number
+  sleep: number
+  heart_rate: number
+  weight: number
+  calories: number
+  active_minutes: number
+}
+
+interface WeeklySummary {
+  summary: string[]
+  trends: WeeklyTrends
+  status: string
+}
+
+const METRIC_GOALS: Record<keyof Metrics, number> = {
+  steps: 10000,
+  sleep: 8,
+  heartRate: 100,
+  weight: 70,
+  calories: 500,
+  activeMinutes: 60,
+}
+
+const DEFAULT_METRICS: Metrics = {
+  steps: { value: 0 },
+  sleep: { value: 0 },
+  heartRate: { value: 0 },
+  weight: { value: 0 },
+  calories: { value: 0 },
+  activeMinutes: { value: 0 },
+}
+
+const METRIC_LABELS: Record<keyof Metrics, string> = {
+  steps: "Steps",
+  sleep: "Sleep",
+  heartRate: "Heart Rate",
+  weight: "Weight",
+  calories: "Calories",
+  activeMinutes: "Active Mins",
+}
+
+const DEFAULT_INSIGHTS = [
+  "Consistency beats intensity — you're building a habit that compounds.",
+  "Aim for a 20-minute walk after your largest meal.",
+  "Protecting sleep is the single best thing you can do for tomorrow's HR.",
+  "Small daily wins matter more than any single perfect day.",
+]
+
+function greeting() {
+  const hour = new Date().getHours()
+  if (hour < 5) return "Rest well"
+  if (hour < 12) return "Good morning"
+  if (hour < 18) return "Good afternoon"
+  return "Good evening"
+}
+
+function toPoints(labels: string[] = [], values: number[] = []): TrendPoint[] {
+  return labels.map((label, i) => ({ label, value: values[i] ?? 0 }))
+}
 
 export default function Dashboard() {
-  const { isSidebarOpen } = useSidebar()
-  const [darkMode, setDarkMode] = useState(false)
-  const [aiRecommendations, setAiRecommendations] = useState<{
-    summary: string;
-    insights: string[];
-  }>({
-    summary: "Connect your health tracking devices to get personalized recommendations.",
-    insights: [
-      "We'll analyze your health data to provide tailored insights.",
-      "Track your daily activities to receive AI-powered health advice.",
-      "Your data helps us understand your habits and suggest improvements.",
-      "Enable Google Fit sync for real-time health monitoring.",
-    ]
+  const { user, isDemo } = useUser()
+  const [metrics, setMetrics] = useState<Metrics>(DEFAULT_METRICS)
+  const [stepsSeries, setStepsSeries] = useState<TrendPoint[]>([])
+  const [sleepSeries, setSleepSeries] = useState<TrendPoint[]>([])
+  const [heartSeries, setHeartSeries] = useState<TrendPoint[]>([])
+  const [activitySeries, setActivitySeries] = useState<TrendPoint[]>([])
+  const [aiInsights, setAiInsights] = useState<{ summary: string; insights: string[] }>({
+    summary: "Loading your personalized health summary…",
+    insights: [],
   })
-  const [healthFacts, setHealthFacts] =useState<string[]>([
-    "Walking boosts your immune function.",
-    "Sleep helps regulate hormones.",
-    "Staying active reduces stress.",
-  ])
-  const [chartData, setChartData] =  useState({
-    labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-    datasets: [
-      {
-        label: "Steps",
-        data: [4000, 6000, 5000, 7000, 6500, 8000, 5346],
-        borderColor: "#1e3a8a",
-        backgroundColor: "rgba(30, 58, 138, 0.2)",
-        tension: 0.4,
-      },
-    ],
-  })
-
+  const [aiOnline, setAiOnline] = useState(false)
+  const [weekly, setWeekly] = useState<WeeklySummary | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isAiOnline, setIsAiOnline] = useState(false)
-  const [metrics, setMetrics] = useState({
-    steps: { value: 5346, trend: "stable" },
-    sleep: { value: 7, trend: "stable" },
-    heartRate: { value: 67, trend: "stable" },
-    weight: { value: 57, trend: "stable" },
-    calories: { value: 83, trend: "stable" },
-    activeMinutes: { value: 53, trend: "stable" },
-  })
-  const [showAllFacts, setShowAllFacts] = useState(false)
-  const [weeklySummary, setWeeklySummary] = useState<{
-    summary: string[];
-    trends: {
-      steps: number;
-      sleep: number;
-      heart_rate: number;
-      weight: number;
-      calories: number;
-      active_minutes: number;
-    };
-    status: string;
-  } | null>(null)
-  const [isAddMenuOpen, setIsAddMenuOpen] = useState(false)
-  const [selectedMetric, setSelectedMetric] = useState<string | null>(null)
-  const [metricValue, setMetricValue] = useState("")
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  //const API_ENDPOINT = "http://127.0.0.1:8000"
-  
-  // Sleep breakdown data
-  const [sleepBreakdownData, setSleepBreakdownData] = useState({
-    labels: [],
-    datasets: [
-      {
-        data: [],
-        backgroundColor: [
-          "rgba(30, 58, 138, 0.6)",
-          "rgba(59, 130, 246, 0.6)",
-          "rgba(99, 102, 241, 0.6)",
-          "rgba(139, 92, 246, 0.6)",
-        ],
-        borderColor: [
-          "rgba(30, 58, 138, 1)",
-          "rgba(59, 130, 246, 1)",
-          "rgba(99, 102, 241, 1)",
-          "rgba(139, 92, 246, 1)",
-        ],
-        borderWidth: 1,
-      },
-    ],
-  })
-  
-  // Weekly activity data
-  const [weeklyActivityData, setWeeklyActivityData] = useState({
-    labels: [],
-    datasets: [
-      {
-        label: "Active Minutes",
-        data: [],
-        backgroundColor: "rgba(30, 58, 138, 0.6)",
-      },
-    ],
-  })
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [addMetric, setAddMetric] = useState<keyof Metrics | null>(null)
+  const [addValue, setAddValue] = useState("")
+  const [addSubmitting, setAddSubmitting] = useState(false)
 
-  // Initialize theme on component mount
-  useEffect(() => {
-    // Add safe user data retrieval
-    const userData = localStorage.getItem("user");
-    let username = "";
-    
-    if (userData) {
-      try {
-        const parsedUser = JSON.parse(userData);
-        username = parsedUser?.username || "Guest";
-      } catch (error) {
-        console.error("Error parsing user data:", error);
-        username = "Guest";
+  async function loadAll() {
+    try {
+      const [rec, m, steps, sleep, heart, activity, summary] = await Promise.allSettled([
+        healthAPI.getHealthRecommendation(),
+        healthAPI.getMetrics(),
+        healthAPI.getStepData(),
+        healthAPI.getSleepData(),
+        healthAPI.getHeartRateData(),
+        healthAPI.getActivityData(),
+        healthAPI.getWeeklySummary(),
+      ])
+
+      if (rec.status === "fulfilled" && rec.value?.recommendations?.general) {
+        setAiInsights(rec.value.recommendations.general)
+        setAiOnline(true)
       }
-    } else {
-      username = "Guest";
+
+      if (m.status === "fulfilled" && m.value) {
+        setMetrics({
+          steps: { value: m.value.steps || 0 },
+          sleep: { value: m.value.sleep || 0 },
+          heartRate: { value: m.value.heart_rate || 0 },
+          weight: { value: m.value.weight || 0 },
+          calories: { value: m.value.calories || 0 },
+          activeMinutes: { value: m.value.activity_minutes || 0 },
+        })
+      }
+
+      if (steps.status === "fulfilled") setStepsSeries(toPoints(steps.value.labels, steps.value.values))
+      if (sleep.status === "fulfilled") setSleepSeries(toPoints(sleep.value.labels, sleep.value.values))
+      if (heart.status === "fulfilled") setHeartSeries(toPoints(heart.value.labels, heart.value.values))
+      if (activity.status === "fulfilled") setActivitySeries(toPoints(activity.value.labels, activity.value.values))
+
+      if (summary.status === "fulfilled" && summary.value?.summary) {
+        setWeekly({
+          summary: summary.value.summary,
+          trends: summary.value.trends || {
+            steps: 0, sleep: 0, heart_rate: 0, weight: 0, calories: 0, active_minutes: 0,
+          },
+          status: summary.value.status || "success",
+        })
+      }
+    } finally {
+      setIsLoading(false)
+      setIsRefreshing(false)
     }
-    
-    console.log("Current username:", username);
-
-    const initialDarkMode = getInitialTheme();
-    setDarkMode(initialDarkMode);
-
-    // Apply theme to document
-    if (initialDarkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [])
-
-  const handleToggleTheme = () => {
-    const newDarkMode = toggleTheme(darkMode)
-    setDarkMode(newDarkMode)
   }
 
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        // Get username from localStorage
-        const userData = localStorage.getItem("user");
-        if (!userData) {
-          console.error("No user data found in localStorage");
-          return;
-        }
+    loadAll()
+  }, [])
 
-        const { username } = JSON.parse(userData);
-        console.log("Fetching recommendations for username:", username);
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    await loadAll()
+  }
 
-        // Fetch AI recommendations
-        try {
-          const recommendations = await healthAPI.getHealthRecommendation();
-          if (recommendations?.recommendations?.general) {
-            setAiRecommendations(recommendations.recommendations.general);
-            setIsAiOnline(true);
-          }
-        } catch (err: any) {
-          console.error("Failed to fetch AI recommendations:", err.message);
-          setAiRecommendations({
-            summary: "Unable to fetch recommendations. Please check your connection.",
-            insights: [
-              "Make sure you have granted all necessary permissions.",
-              "Try refreshing the page.",
-              "Check your internet connection and try again.",
-              "Contact support if the issue persists.",
-            ]
-          });
-          setIsAiOnline(false);
-        }
-
-        // Fetch health facts
-        try {
-          const factsData = await healthAPI.getHealthFacts();
-            if (factsData && factsData.facts) {
-              setHealthFacts(factsData.facts);
-          } else {
-            setHealthFacts([]);
-          }
-        } catch (error) {
-          console.error("Error fetching health facts:", error);
-          setHealthFacts([]);
-        }
-
-        // Fetch metrics data
-        try {
-          const metricsData = await healthAPI.getMetrics();
-          setMetrics({
-            steps: { value: metricsData.steps || 0, trend: "stable" },
-            sleep: { value: metricsData.sleep || 0, trend: "stable" },
-            heartRate: { value: metricsData.heart_rate || 0, trend: "stable" },
-            weight: { value: metricsData.weight || 0, trend: "stable" },
-            calories: { value: metricsData.calories || 0, trend: "stable" },
-            activeMinutes: { value: metricsData.activity_minutes || 0, trend: "stable" },
-          });
-        } catch (error) {
-          console.error("Error fetching metrics data:", error);
-        }
-
-        // Fetch chart data for steps
-        try {
-          const stepsData = await healthAPI.getMetricsChart('steps');
-            if (stepsData && stepsData.labels && stepsData.values) {
-              setChartData({
-                labels: stepsData.labels,
-                datasets: [
-                  {
-                    label: "Steps",
-                    data: stepsData.values,
-                    borderColor: "#1e3a8a",
-                    backgroundColor: "rgba(30, 58, 138, 0.2)",
-                    tension: 0.4,
-                  },
-                ],
-              });
-          }
-        } catch (error) {
-          console.error("Error fetching steps data:", error);
-        }
-
-        // Fetch weekly activity data
-        try {
-          const activityData = await healthAPI.getActivityData();
-            if (activityData && activityData.labels && activityData.values) {
-              setWeeklyActivityData({
-                labels: activityData.labels,
-                datasets: [
-                  {
-                    label: "Active Minutes",
-                    data: activityData.values,
-                    backgroundColor: "rgba(30, 58, 138, 0.6)",
-                  },
-                ],
-              });
-          }
-        } catch (error) {
-          console.error("Error fetching activity data:", error);
-        }
-
-        // Fetch sleep breakdown data
-        try {
-          const sleepData = await healthAPI.getSleepData();
-          if (sleepData && sleepData.labels && sleepData.values) {
-              setSleepBreakdownData({
-              labels: sleepData.labels,
-                datasets: [
-                  {
-                  data: sleepData.values,
-                    backgroundColor: [
-                      "rgba(30, 58, 138, 0.6)",
-                      "rgba(59, 130, 246, 0.6)",
-                      "rgba(99, 102, 241, 0.6)",
-                      "rgba(139, 92, 246, 0.6)",
-                    ],
-                    borderColor: [
-                      "rgba(30, 58, 138, 1)",
-                      "rgba(59, 130, 246, 1)",
-                      "rgba(99, 102, 241, 1)",
-                      "rgba(139, 92, 246, 1)",
-                    ],
-                    borderWidth: 1,
-                  },
-                ],
-              });
-          }
-        } catch (error) {
-          console.error("Error fetching sleep data:", error);
-        }
-        
-        // Fetch weekly summary
-        try {
-          const summaryData = await healthAPI.getWeeklySummary();
-          if (summaryData && summaryData.summary) {
-            setWeeklySummary({
-              summary: summaryData.summary,
-              trends: summaryData.trends || {
-                steps: 0,
-                sleep: 0,
-                heart_rate: 0,
-                weight: 0,
-                calories: 0,
-                active_minutes: 0
-              },
-              status: summaryData.status || 'success'
-            });
-          } else {
-            setWeeklySummary(null);
-          }
-        } catch (error) {
-          console.error("Error fetching weekly summary:", error);
-          setWeeklySummary(null);
-        }
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-        setAiRecommendations({
-          summary: "Unable to fetch recommendations. Please check your connection.",
-          insights: [
-            "Make sure you have granted all necessary permissions.",
-            "Try refreshing the page.",
-            "Check your internet connection and try again.",
-            "Contact support if the issue persists.",
-          ]
-        });
-        setIsAiOnline(false);
-        setHealthFacts([]);
-        setChartData({
-          labels: [],
-          datasets: [
-            {
-              label: "Steps",
-              data: [],
-              borderColor: "#1e3a8a",
-              backgroundColor: "rgba(30, 58, 138, 0.2)",
-              tension: 0.4,
-            },
-          ],
-        });
-        setWeeklySummary(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  // Function to render trend icon
-  const renderTrendIcon = (trend: string) => {
-    switch (trend) {
-      case "up":
-        return <span className="text-green-500">↑</span>;
-      case "down":
-        return <span className="text-red-500">↓</span>;
-      case "stable":
-        return <span className="text-blue-500">→</span>;
-      default:
-        return null;
-    }
-  };
-
-  const handleAddMetric = async (metric: string) => {
-    setSelectedMetric(metric);
-    setIsAddMenuOpen(false);
-  };
-
-  const handleSubmitMetric = async () => {
-    if (!selectedMetric || !metricValue) return;
-
-    setIsSubmitting(true);
+  const handleAddMetric = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!addMetric || !addValue) return
+    setAddSubmitting(true)
     try {
-      await healthAPI.addMetric(selectedMetric, parseFloat(metricValue));
-      
-      // Reset form
-      setMetricValue("");
-      setSelectedMetric(null);
-      
-      // Refresh metrics data
-      const metricsData = await healthAPI.getMetrics();
-      setMetrics({
-        steps: { value: metricsData.steps || 0, trend: "stable" },
-        sleep: { value: metricsData.sleep || 0, trend: "stable" },
-        heartRate: { value: metricsData.heart_rate || 0, trend: "stable" },
-        weight: { value: metricsData.weight || 0, trend: "stable" },
-        calories: { value: metricsData.calories || 0, trend: "stable" },
-        activeMinutes: { value: metricsData.activity_minutes || 0, trend: "stable" },
-      });
-    } catch (error) {
-      console.error("Error adding metric:", error);
+      const apiKey =
+        addMetric === "heartRate" ? "heartRate" :
+        addMetric === "activeMinutes" ? "activeMinutes" :
+        addMetric
+      await healthAPI.addMetric(apiKey, Number(addValue))
+      setMetrics((prev) => ({ ...prev, [addMetric]: { value: Number(addValue) } }))
+      setAddMetric(null)
+      setAddValue("")
     } finally {
-      setIsSubmitting(false);
+      setAddSubmitting(false)
     }
-  };
+  }
+
+  const dailyProgress = useMemo(() => {
+    const stepPct = Math.min(100, (metrics.steps.value / METRIC_GOALS.steps) * 100)
+    const sleepPct = Math.min(100, (metrics.sleep.value / METRIC_GOALS.sleep) * 100)
+    const activePct = Math.min(100, (metrics.activeMinutes.value / METRIC_GOALS.activeMinutes) * 100)
+    return Math.round((stepPct + sleepPct + activePct) / 3)
+  }, [metrics])
+
+  const displayInsights = aiInsights.insights.length ? aiInsights.insights : DEFAULT_INSIGHTS
 
   return (
-    <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
-      <Sidebar />
-      <div className={`flex-1 transition-all duration-300 ${isSidebarOpen ? "ml-64" : "ml-24"} p-8 overflow-y-auto`}>
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-semibold text-gray-800 dark:text-white">Dashboard</h1>
-          <div className="flex items-center space-x-4">
-            {/* <AIStatus isOnline={isAiOnline} /> */}
-            <button 
-              onClick={handleToggleTheme} 
-              className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-colors"
-              aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-            >
-              {darkMode ? <FaSun className="h-5 w-5" /> : <FaMoon className="h-5 w-5" />}
-            </button>
+    <div className="space-y-6">
+      {/* Demo banner */}
+      {(isDemo || demoMode.isActive()) && (
+        <div className="rounded-xl bg-secondary border border-border px-4 py-2.5 text-sm flex items-center gap-2 animate-fade-in-up">
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-accent/15 text-accent shrink-0">
+            <Zap className="w-3.5 h-3.5" fill="currentColor" />
+          </span>
+          <span className="text-pretty">
+            You're viewing sample data. <Link to="/auth" className="font-semibold text-primary hover:underline">Sign up</Link> to connect Google Fit.
+          </span>
+        </div>
+      )}
+
+      {/* Greeting header — flat, no gradient */}
+      <div className="rounded-2xl bg-card border border-border p-6 sm:p-8 animate-fade-in-up">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-muted-foreground">
+              {new Date().toLocaleDateString(undefined, {
+                weekday: "long", month: "long", day: "numeric",
+              })}
+            </p>
+            <h1 className="mt-1 text-3xl sm:text-4xl font-display font-bold tracking-tight text-foreground">
+              {greeting()}, {user?.name?.split(" ")[0] || "friend"}.
+            </h1>
+            {isLoading ? (
+              <div className="mt-3 space-y-2 max-w-lg">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            ) : (
+              <p className="mt-3 max-w-lg text-muted-foreground text-pretty">
+                {aiInsights.summary}
+              </p>
+            )}
+            <div className="mt-5 flex items-center gap-2">
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="inline-flex items-center gap-2 h-10 px-3 rounded-lg bg-secondary text-foreground text-sm font-semibold hover:bg-muted disabled:opacity-70 transition-colors"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+                Refresh
+              </button>
+              <Link
+                to="/metrics"
+                className="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors"
+              >
+                All metrics <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 self-center shrink-0">
+            <ProgressRing value={dailyProgress} size={128} stroke={10}>
+              <div className="text-center">
+                <div className="text-3xl font-display font-bold text-foreground tabular-nums">{dailyProgress}%</div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Daily goal</div>
+              </div>
+            </ProgressRing>
           </div>
         </div>
+      </div>
 
-        {/* Health Interpreter - Hidden as it's accessed via floating button */}
-        <HealthInterpreter />
-
+      {/* Metric cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {isLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
-          </div>
+          Array.from({ length: 6 }).map((_, i) => <StatCardSkeleton key={i} />)
         ) : (
-          <div className="space-y-6">
-            {/* AI Recommendations */}
-            <div className="p-6 bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-800 dark:to-blue-900 rounded-lg shadow-lg text-white">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center">
-                  <FaBrain className="text-2xl mr-3" />
-                  <h2 className="text-xl font-bold">AI Health Recommendations</h2>
-                </div>
-                <AIStatus isOnline={isAiOnline} />
-              </div>
-              {aiRecommendations && (
-                <>
-                  <p className="text-lg mb-4">{aiRecommendations.summary}</p>
-                  <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg">
-                    <h3 className="font-semibold mb-2">Additional Insights:</h3>
-                    <ul className="list-disc list-inside space-y-1">
-                      {aiRecommendations.insights.map((tip, index) => (
-                        <li key={index}>{tip}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </>
-              )}
-              <div className="mt-4 text-sm text-blue-100">
-                <FaInfoCircle className="inline-block mr-1" />
-                Recommendations are personalized based on your health data and goals
-              </div>
-            </div>
-
-            {/* Metrics Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* Steps */}
-              <Link to="/metrics/steps" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <FaWalking className="text-blue-600 text-2xl mr-3" />
-                    <div>
-                      <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Steps</h2>
-                      <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                        {metrics.steps.value.toLocaleString()} {renderTrendIcon(metrics.steps.trend)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </Link>
-
-              {/* Sleep */}
-              <Link to="/metrics/sleep" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <FaBed className="text-indigo-600 text-2xl mr-3" />
-                    <div>
-                      <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Sleep</h2>
-                      <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                        {metrics.sleep.value} hrs {renderTrendIcon(metrics.sleep.trend)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </Link>
-
-              {/* Heart Rate */}
-              <Link to="/metrics/heart-rate" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <FaHeartbeat className="text-red-600 text-2xl mr-3" />
-                    <div>
-                      <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Heart Rate</h2>
-                      <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                        {metrics.heartRate.value} bpm {renderTrendIcon(metrics.heartRate.trend)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </Link>
-
-              {/* Weight */}
-              <Link to="/metrics/weight" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <FaWeight className="text-green-600 text-2xl mr-3" />
-                    <div>
-                      <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Weight</h2>
-                      <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                        {metrics.weight.value} kg {renderTrendIcon(metrics.weight.trend)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </Link>
-
-              {/* Calories */}
-              <Link to="/metrics/calories" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <FaAppleAlt className="text-orange-600 text-2xl mr-3" />
-                    <div>
-                      <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Calories</h2>
-                      <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                        {metrics.calories.value} kcal {renderTrendIcon(metrics.calories.trend)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </Link>
-
-              {/* Active Minutes */}
-              <Link to="/metrics/active-minutes" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <FaRunning className="text-emerald-600 text-2xl mr-3" />
-                    <div>
-                      <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Active Minutes</h2>
-                      <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                        {metrics.activeMinutes.value} min {renderTrendIcon(metrics.activeMinutes.trend)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            </div>
-
-            {/* Graphs Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Steps Graph */}
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
-                <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-4">Weekly Steps</h2>
-                {chartData ? (
-                  <Line
-                    data={chartData}
-                    options={{
-                      responsive: true,
-                      plugins: {
-                        legend: {
-                          display: false,
-                        },
-                        tooltip: {
-                          mode: "index",
-                          intersect: false,
-                        },
-                      },
-                      scales: {
-                        y: {
-                          beginAtZero: false,
-                          grid: {
-                            color: darkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)",
-                          },
-                        },
-                        x: {
-                          grid: {
-                            display: false,
-                          },
-                        },
-                      },
-                    }}
-                  />
-                ) : (
-                  <p className="text-gray-600 dark:text-gray-400 mt-2">Loading chart data...</p>
-                )}
-              </div>
-
-              {/* Weekly Activity */}
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
-                <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-4">Weekly Activity</h2>
-                <Bar
-                  data={weeklyActivityData}
-                  options={{
-                    responsive: true,
-                    plugins: {
-                      legend: {
-                        display: false,
-                      },
-                    },
-                    scales: {
-                      y: {
-                        beginAtZero: true,
-                        grid: {
-                          color: darkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)",
-                        },
-                        title: {
-                          display: true,
-                          text: "Minutes",
-                        },
-                      },
-                      x: {
-                        grid: {
-                          display: false,
-                        },
-                      },
-                    },
-                  }}
-                />
-              </div>
-
-              {/* Sleep Breakdown */}
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
-                <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-4">Sleep Breakdown</h2>
-                <div className="flex items-center justify-center">
-                  <div style={{ width: "70%", height: "auto" }}>
-                    <Doughnut
-                      data={sleepBreakdownData}
-                      options={{
-                        responsive: true,
-                        plugins: {
-                          legend: {
-                            position: "right",
-                            labels: {
-                              color: darkMode ? "#f3f4f6" : "#1f2937",
-                            },
-                          },
-                        },
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Health Facts */}
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
-                <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-4">Health Facts</h2>
-                <div className="space-y-4">
-                  {healthFacts.length > 0 ? (
-                    <>
-                      {healthFacts.slice(0, showAllFacts ? 5 : 3).map((fact, index) => (
-                        <div key={index} className="flex items-start">
-                          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-blue-100 dark:bg-blue-900 rounded-full mr-3">
-                            <span className="text-blue-600 dark:text-blue-300 font-bold">{index + 1}</span>
-                          </div>
-                          <p className="text-gray-700 dark:text-gray-300">{fact}</p>
-                        </div>
-                      ))}
-                      {healthFacts.length > 3 && (
-                        <button 
-                          onClick={() => setShowAllFacts(!showAllFacts)}
-                          className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
-                        >
-                          {showAllFacts ? "Show less" : "View more health facts"}
-                        </button>
-                      )}
-                    </>
-                  ) : (
-                    <p className="text-gray-600 dark:text-gray-400">Connect your health account to see interesting health facts.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Weekly Summary */}
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
-              <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-4">Weekly Summary</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {weeklySummary ? (
-                  <>
-                    <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-                      <h3 className="font-medium text-gray-800 dark:text-white mb-2">Active minutes</h3>
-                      <p className="text-gray-600 dark:text-gray-300">
-                        {weeklySummary.summary[0] || "No activity data available"}
-                      </p>
-                    </div>
-                    <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-                      <h3 className="font-medium text-gray-800 dark:text-white mb-2">Sleep Analysis</h3>
-                      <p className="text-gray-600 dark:text-gray-300">
-                        {weeklySummary.summary[1] || "No sleep data available"}
-                      </p>
-                    </div>
-                    <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-                      <h3 className="font-medium text-gray-800 dark:text-white mb-2">Heart Health</h3>
-                      <p className="text-gray-600 dark:text-gray-300">
-                        {weeklySummary.summary[2] || "No heart rate data available"}
-                      </p>
-                    </div>
-                  </>
-                ) : (
-                  <div className="col-span-3 text-center p-4">
-                    <p className="text-gray-600 dark:text-gray-400">
-                      {isLoading ? "Loading weekly summary..." : "No weekly summary data available. Please check your health data connections."}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <>
+            <StatCard
+              label="Steps"
+              value={metrics.steps.value.toLocaleString()}
+              unit="today"
+              delta={weekly?.trends.steps}
+              accent="steps"
+              icon={<Footprints className="w-5 h-5" />}
+            />
+            <StatCard
+              label="Heart Rate"
+              value={metrics.heartRate.value}
+              unit="bpm"
+              delta={weekly?.trends.heart_rate}
+              accent="heart"
+              icon={<Heart className="w-5 h-5" />}
+            />
+            <StatCard
+              label="Sleep"
+              value={metrics.sleep.value.toFixed(1)}
+              unit="hrs"
+              delta={weekly?.trends.sleep}
+              accent="sleep"
+              icon={<Moon className="w-5 h-5" />}
+            />
+            <StatCard
+              label="Calories"
+              value={metrics.calories.value.toLocaleString()}
+              unit="kcal"
+              delta={weekly?.trends.calories}
+              accent="calories"
+              icon={<Flame className="w-5 h-5" />}
+            />
+            <StatCard
+              label="Active Mins"
+              value={metrics.activeMinutes.value}
+              unit="min"
+              delta={weekly?.trends.active_minutes}
+              accent="active"
+              icon={<Timer className="w-5 h-5" />}
+            />
+            <StatCard
+              label="Weight"
+              value={metrics.weight.value.toFixed(1)}
+              unit="kg"
+              delta={weekly?.trends.weight}
+              accent="weight"
+              icon={<Scale className="w-5 h-5" />}
+            />
+          </>
         )}
       </div>
 
-      {/* Floating Action Buttons */}
-      <div className="fixed bottom-8 right-8 z-50">
-        <div className="flex flex-col gap-4 items-end">
-          {/* Health Interpreter Button */}
-          <button
-            onClick={() => {
-              const healthInterpreterModal = document.querySelector('[data-health-interpreter]');
-              if (healthInterpreterModal) {
-                (healthInterpreterModal as HTMLButtonElement).click();
+      {/* Charts row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {isLoading ? (
+          <>
+            <div className="lg:col-span-2"><ChartSkeleton height={240} /></div>
+            <ChartSkeleton height={240} />
+          </>
+        ) : (
+          <>
+            <ChartCard
+              className="lg:col-span-2"
+              title="Weekly steps"
+              subtitle="Trend of your daily step count"
+              actions={
+                <Link to="/metrics/steps" className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1">
+                  Details <ArrowRight className="w-3 h-3" />
+                </Link>
               }
-            }}
-            className="w-14 h-14 bg-purple-600 hover:bg-purple-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 transform hover:scale-110"
-            aria-label="Ask about health metrics"
-            title="Ask about health metrics"
-          >
-            <FaBrain className="text-xl" />
-          </button>
-          
-          {/* Add Metric Button */}
-          <div className="relative">
-            <button
-              onClick={() => setIsAddMenuOpen(!isAddMenuOpen)}
-              className="w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 transform hover:scale-110"
-              aria-label="Add health metric"
-              title="Add health metric"
             >
-              <FaPlus className="text-xl" />
-            </button>
+              <TrendChart data={stepsSeries} color="hsl(var(--metric-steps))" variant="area" height={240} unit="steps" />
+            </ChartCard>
 
-          {/* Dropdown Menu */}
-          {isAddMenuOpen && (
-            <div className="absolute bottom-16 right-0 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <button
-                onClick={() => handleAddMetric("steps")}
-                className="w-full px-4 py-2 text-left text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
-              >
-                <FaWalking className="mr-2" /> Steps
-              </button>
-              <button
-                onClick={() => handleAddMetric("sleep")}
-                className="w-full px-4 py-2 text-left text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
-              >
-                <FaBed className="mr-2" /> Sleep
-              </button>
-              <button
-                onClick={() => handleAddMetric("heartRate")}
-                className="w-full px-4 py-2 text-left text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
-              >
-                <FaHeartbeat className="mr-2" /> Heart Rate
-              </button>
-              <button
-                onClick={() => handleAddMetric("weight")}
-                className="w-full px-4 py-2 text-left text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
-              >
-                <FaWeight className="mr-2" /> Weight
-              </button>
-              <button
-                onClick={() => handleAddMetric("calories")}
-                className="w-full px-4 py-2 text-left text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
-              >
-                <FaAppleAlt className="mr-2" /> Calories
-              </button>
-              <button
-                onClick={() => handleAddMetric("activeMinutes")}
-                className="w-full px-4 py-2 text-left text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
-              >
-                <FaRunning className="mr-2" /> Active Minutes
-              </button>
-            </div>
-          )}
+            <ChartCard
+              title="Active minutes"
+              subtitle="How much you moved"
+              actions={
+                <Link to="/metrics/active-minutes" className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1">
+                  Details <ArrowRight className="w-3 h-3" />
+                </Link>
+              }
+            >
+              <TrendChart data={activitySeries} color="hsl(var(--metric-active))" variant="bar" height={240} unit="min" />
+            </ChartCard>
+          </>
+        )}
+      </div>
 
-          {/* Metric Input Modal */}
-          {selectedMetric && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-96">
-                <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
-                  Add {selectedMetric.charAt(0).toUpperCase() + selectedMetric.slice(1)}
-                </h3>
-                <input
-                  type="number"
-                  value={metricValue}
-                  onChange={(e) => setMetricValue(e.target.value)}
-                  placeholder={`Enter ${selectedMetric} value`}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                />
-                <div className="mt-4 flex justify-end space-x-2">
-                  <button
-                    onClick={() => {
-                      setSelectedMetric(null)
-                      setMetricValue("")
-                    }}
-                    className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSubmitMetric}
-                    disabled={isSubmitting || !metricValue}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isSubmitting ? "Adding..." : "Add"}
-                  </button>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {isLoading ? (
+          <>
+            <ChartSkeleton height={200} />
+            <ChartSkeleton height={200} />
+            <ChartSkeleton height={200} />
+          </>
+        ) : (
+          <>
+            <ChartCard
+              title="Heart rate"
+              subtitle="Beats per minute"
+              actions={
+                <Link to="/metrics/heart-rate" className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1">
+                  Details <ArrowRight className="w-3 h-3" />
+                </Link>
+              }
+            >
+              <TrendChart data={heartSeries} color="hsl(var(--metric-heart))" variant="line" height={200} unit="bpm" />
+            </ChartCard>
+
+            <ChartCard
+              title="Sleep hours"
+              subtitle="Nightly duration"
+              actions={
+                <Link to="/metrics/sleep" className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1">
+                  Details <ArrowRight className="w-3 h-3" />
+                </Link>
+              }
+            >
+              <TrendChart data={sleepSeries} color="hsl(var(--metric-sleep))" variant="area" height={200} unit="h" />
+            </ChartCard>
+
+            {/* AI Insights — flat with left accent bar */}
+            <div className="rounded-2xl bg-card border border-border p-5 flex flex-col relative overflow-hidden">
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
+              <div className="flex items-center gap-2 mb-3">
+                <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 text-primary">
+                  <Sparkles className="w-4 h-4" />
+                </span>
+                <div>
+                  <h3 className="font-display font-semibold text-sm">AI Insights</h3>
+                  <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                    <span className={`w-1.5 h-1.5 rounded-full ${aiOnline ? "bg-accent animate-pulse-soft" : "bg-muted-foreground/50"}`} />
+                    {aiOnline ? "Live" : "Sample"}
+                  </p>
                 </div>
               </div>
+              <ul className="space-y-2 flex-1">
+                {displayInsights.slice(0, 4).map((tip, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                    <Lightbulb className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                    <span className="text-pretty">{tip}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-          )}
+          </>
+        )}
+      </div>
+
+      {/* Quick add metric */}
+      <div>
+        <SectionHeader
+          eyebrow="Log manually"
+          title="Add a metric"
+          description="Fitbit or Fit not syncing? Add today's numbers by hand."
+        />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+          {(Object.keys(METRIC_LABELS) as (keyof Metrics)[]).map((key) => (
+            <button
+              key={key}
+              onClick={() => setAddMetric(key)}
+              className="group flex items-center gap-2 rounded-lg bg-card border border-border px-3 py-2.5 text-sm font-medium text-foreground hover:border-foreground/30 hover:bg-secondary transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground" />
+              {METRIC_LABELS[key]}
+            </button>
+          ))}
         </div>
       </div>
-    </div>
+
+      {/* Weekly summary */}
+      {weekly && weekly.summary?.length > 0 && (
+        <ChartCard title="This week" subtitle="Highlights from the past 7 days">
+          <ul className="space-y-3">
+            {weekly.summary.map((line, i) => (
+              <li key={i} className="flex items-start gap-3 text-sm">
+                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                <span className="text-foreground text-pretty">{line}</span>
+              </li>
+            ))}
+          </ul>
+        </ChartCard>
+      )}
+
+      {/* Add metric modal */}
+      {addMetric && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/40 backdrop-blur-sm animate-fade-in-up"
+          onClick={() => setAddMetric(null)}
+        >
+          <form
+            onSubmit={handleAddMetric}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-2xl bg-card border border-border shadow-pop p-6 space-y-4 animate-scale-in"
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="font-display font-semibold text-lg">
+                  Add {METRIC_LABELS[addMetric]}
+                </h3>
+                <p className="text-sm text-muted-foreground">Enter today's value.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAddMetric(null)}
+                className="w-8 h-8 rounded-lg inline-flex items-center justify-center text-muted-foreground hover:bg-secondary hover:text-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <input
+              type="number"
+              step="0.1"
+              autoFocus
+              value={addValue}
+              onChange={(e) => setAddValue(e.target.value)}
+              placeholder="e.g. 8000"
+              className="w-full h-11 px-3 rounded-lg bg-background border border-border text-foreground outline-none focus:border-primary focus:shadow-ring tabular-nums"
+            />
+            <button
+              type="submit"
+              disabled={addSubmitting || !addValue}
+              className="w-full h-11 rounded-lg bg-primary text-primary-foreground font-semibold disabled:opacity-70 hover:bg-primary/90 transition-colors"
+            >
+              {addSubmitting ? "Saving..." : "Save"}
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   )
 }

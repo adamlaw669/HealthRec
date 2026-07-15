@@ -1,22 +1,220 @@
-/* Make sure Tailwind directives are at the top of the file */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Other custom styles */
-@theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
-    "Noto Color Emoji";
-}
+@layer base {
+  :root {
+    /* Neutrals — off-white with a whisper of cyan */
+    --background: 195 40% 98%;
+    --foreground: 200 40% 12%;
 
-html,
-body {
-  @apply bg-white dark:bg-gray-950;
-}
+    --card: 0 0% 100%;
+    --card-foreground: 200 40% 12%;
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
+    --popover: 0 0% 100%;
+    --popover-foreground: 200 40% 12%;
+
+    /* Primary — clinical cyan */
+    --primary: 189 92% 34%;
+    --primary-foreground: 195 40% 98%;
+
+    /* Secondary — soft ice */
+    --secondary: 195 40% 94%;
+    --secondary-foreground: 200 40% 20%;
+
+    --muted: 200 30% 96%;
+    --muted-foreground: 200 12% 44%;
+
+    /* Accent — health green (used sparingly) */
+    --accent: 152 68% 38%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 358 78% 54%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 200 25% 90%;
+    --input: 200 25% 90%;
+    --ring: 189 92% 40%;
+
+    /* Chart palette — solid, accessible */
+    --chart-1: 189 92% 40%;
+    --chart-2: 152 68% 42%;
+    --chart-3: 32 92% 52%;
+    --chart-4: 262 60% 60%;
+    --chart-5: 210 92% 56%;
+
+    --radius: 0.875rem;
+
+    /* Health metric semantic colors — flat, distinguishable */
+    --heart: 350 80% 55%;
+    --steps: 210 88% 52%;
+    --sleep: 262 60% 58%;
+    --calories: 24 92% 52%;
+    --active: 152 68% 40%;
+    --weight: 189 92% 38%;
+  }
+
+  .dark {
+    --background: 205 40% 6%;
+    --foreground: 195 25% 96%;
+
+    --card: 205 32% 9%;
+    --card-foreground: 195 25% 96%;
+
+    --popover: 205 32% 9%;
+    --popover-foreground: 195 25% 96%;
+
+    --primary: 189 92% 52%;
+    --primary-foreground: 205 40% 8%;
+
+    --secondary: 205 25% 15%;
+    --secondary-foreground: 195 25% 96%;
+
+    --muted: 205 20% 14%;
+    --muted-foreground: 200 8% 65%;
+
+    --accent: 152 68% 48%;
+    --accent-foreground: 205 40% 8%;
+
+    --destructive: 358 78% 58%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 205 22% 18%;
+    --input: 205 22% 18%;
+    --ring: 189 92% 55%;
+
+    --chart-1: 189 92% 55%;
+    --chart-2: 152 68% 52%;
+    --chart-3: 32 92% 58%;
+    --chart-4: 262 60% 68%;
+    --chart-5: 210 92% 62%;
+
+    --heart: 350 80% 62%;
+    --steps: 210 88% 62%;
+    --sleep: 262 60% 68%;
+    --calories: 24 92% 58%;
+    --active: 152 68% 52%;
+    --weight: 189 92% 52%;
   }
 }
 
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
+  }
+
+  h1, h2, h3, h4 {
+    font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.18);
+    color: hsl(var(--primary));
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* Tabular figures for numbers — no layout shift */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* Elevated card with subtle depth */
+  .card-flat {
+    @apply bg-card border border-border rounded-2xl;
+  }
+
+  /* Skeleton shimmer surface */
+  .skeleton {
+    @apply relative overflow-hidden bg-muted/60 rounded-lg;
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, hsl(var(--card) / 0.7), transparent);
+    animation: shimmer 1.6s linear infinite;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; }
+
+  /* Subtle grid background — for landing page only */
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, hsl(var(--border) / 0.5) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--border) / 0.5) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 100%);
+  }
+}
+
+/* Keyframes */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes fade-in-up {
+  0% { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  0% { opacity: 0; transform: scale(0.96); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.animate-pulse-soft { animation: pulse-soft 2.4s ease-in-out infinite; }
+.animate-fade-in-up { animation: fade-in-up 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-scale-in { animation: scale-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Recharts polish */
+.recharts-tooltip-wrapper:focus-visible { outline: none; }
+.recharts-default-tooltip {
+  background: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 12px !important;
+}

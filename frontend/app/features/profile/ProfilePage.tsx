@@ -1,360 +1,356 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { FaCamera, FaDownload, FaSun, FaMoon } from "react-icons/fa"
+import {
+  User,
+  Mail,
+  Download,
+  Save,
+  Edit3,
+  CheckCircle2,
+  X,
+  Activity,
+  Sparkles,
+  Trash2,
+  ShieldCheck,
+  LogOut,
+  Flame,
+  Footprints,
+  Heart,
+} from "lucide-react"
 import { authAPI, healthAPI } from "../../api/api"
-import Sidebar from "../../components/Sidebar"
-import { useSidebar } from "../../context/SidebarContext"
-//import { useUser } from "../../context/UserContext"
-import { getInitialTheme, toggleTheme } from "../../utils/theme-utils"
-
-interface Profile {
-  name: string;
-  email: string;
-  profilePicture?: string;
-}
+import { ChartCard, SectionHeader } from "../../components/ui/ChartCard"
+import { Skeleton } from "../../components/ui/Skeleton"
+import { useUser } from "../../context/UserContext"
 
 interface ProfileData {
-  name: string;
-  email: string;
-  profilePicture?: string;
+  name: string
+  email: string
 }
 
 export default function ProfilePage() {
-  const { isSidebarOpen } = useSidebar()
   const navigate = useNavigate()
-  const [user, setUser] = useState<Profile>({
-    email: "",
-    name: "",
-    profilePicture: "/images/dark_blue.jpg"
-  })
+  const { setUser: setContextUser, signOut, isDemo } = useUser()
+  const [user, setUser] = useState<ProfileData>({ name: "", email: "" })
+  const [form, setForm] = useState({ name: "" })
   const [isLoading, setIsLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
-  const [formData, setFormData] = useState({ name: "" })
-  const [darkMode, setDarkMode] = useState(false)
-  const [downloadFormat, setDownloadFormat] = useState<"json" | "csv">("json")
+  const [saving, setSaving] = useState(false)
+  const [downloadFormat, setDownloadFormat] = useState<"json" | "csv">("csv")
   const [isDownloading, setIsDownloading] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [toast, setToast] = useState<{ tone: "ok" | "err"; text: string } | null>(null)
+  const [googleFitConnected, setGoogleFitConnected] = useState<boolean | null>(null)
+  const [stats, setStats] = useState({ steps: 0, heart: 0, calories: 0 })
 
-  // Initialize theme on component mount
   useEffect(() => {
-    const initialDarkMode = getInitialTheme()
-    setDarkMode(initialDarkMode)
-  }, [])
-
-  const handleToggleTheme = () => {
-    const newDarkMode = toggleTheme(darkMode)
-    setDarkMode(newDarkMode)
-  }
-
-  // Fetch user details on page load
-  useEffect(() => {
-    const fetchUser = async () => {
+    ;(async () => {
       setIsLoading(true)
       try {
-        const data = await authAPI.getProfile() as ProfileData
-        if (data) {
-          setUser({
-            email: data.email || "",
-            name: data.name || "User",
-            profilePicture: data.profilePicture || "/images/dark_blue.jpg",
-          })
-          setFormData({ name: data.name || "User" })
-        }
-      } catch (error) {
-        console.error("Error fetching user data:", error)
-        // If unauthorized, redirect to login
-        if ((error instanceof Error ? error.message:'Unknown').toString().includes("401")) {
-          navigate("/auth?mode=signin")
-        }
+        const data = await authAPI.getProfile()
+        setUser({ name: data.name || "User", email: data.email || "" })
+        setForm({ name: data.name || "User" })
+        const fit = await authAPI.checkGoogleFitStatus()
+        setGoogleFitConnected(fit)
+        const m = await healthAPI.getMetrics()
+        setStats({
+          steps: m.steps || 0,
+          heart: m.heart_rate || 0,
+          calories: m.calories || 0,
+        })
+      } catch (e: any) {
+        if ((e?.message || "").includes("401")) navigate("/auth?mode=signin")
       } finally {
         setIsLoading(false)
       }
-    }
-
-    fetchUser()
+    })()
   }, [navigate])
 
-  // Handle form input changes
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData({ ...formData, [name]: value })
+  const notify = (tone: "ok" | "err", text: string) => {
+    setToast({ tone, text })
+    setTimeout(() => setToast(null), 3000)
   }
 
-  // Handle profile update
-  const handleProfileUpdate = async (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
+    setSaving(true)
     try {
-      const response = await authAPI.updateProfile({ 
-        name: formData.name
-      })
-      
-      if (response && response.success) {
-        setUser(prev => ({ 
-          ...prev, 
-          name: formData.name
-        }))
+      const response = await authAPI.updateProfile({ name: form.name })
+      if (response && response.success !== false) {
+        setUser((u) => ({ ...u, name: form.name }))
+        setContextUser({ name: form.name, email: user.email })
         setIsEditing(false)
-        // Show success message
-        alert(response.message || "Profile updated successfully!")
+        notify("ok", "Profile updated")
       } else {
-        throw new Error(response?.message || "Failed to update profile")
+        throw new Error(response?.message || "Failed to update")
       }
-    } catch (error) {
-      console.error("Error updating profile:", error)
-      // Show error message to user
-      alert(error instanceof Error ? error.message : "Failed to update profile. Please try again.")
+    } catch (err) {
+      notify("err", err instanceof Error ? err.message : "Update failed")
     } finally {
-      setIsLoading(false)
+      setSaving(false)
     }
   }
 
-  // Handle profile picture change
-  const handleProfilePictureClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click()
-    }
-  }
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      // In a real app, you would upload this file to your server
-      // For now, we'll just create a local URL for preview
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        if (event.target && event.target.result) {
-          setUser({ ...user, profilePicture: event.target.result.toString() })
-        }
-      }
-      reader.readAsDataURL(e.target.files[0])
-    }
-  }
-
-  // Handle data download
-  const handleDownloadData = async () => {
+  const handleDownload = async () => {
     setIsDownloading(true)
     try {
-      const response = await healthAPI.downloadHealthData(downloadFormat)
-      const blob = new Blob([response], { 
-        type: downloadFormat === 'json' ? 'application/json' : 'text/csv'
-      })
-      const url = window.URL.createObjectURL(blob)
+      const blob = await healthAPI.downloadHealthData(downloadFormat)
+      const url = URL.createObjectURL(blob as Blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `health-data.${downloadFormat}`
-      document.body.appendChild(a)
+      a.download = `healthrec-export.${downloadFormat}`
       a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-    } catch (error) {
-      console.error("Error downloading data:", error)
+      URL.revokeObjectURL(url)
+    } catch {
+      notify("err", "Download failed")
     } finally {
       setIsDownloading(false)
     }
   }
 
-  // Logout function
-  const handleLogout = async () => {
+  const handleConnectFit = async () => {
     try {
-      await authAPI.logout()  // optional: only if you have a backend logout
-    } catch (error) {
-      console.error("Error during logout:", error)
+      await authAPI.connectGoogleFit()
+      if (isDemo) {
+        setGoogleFitConnected(true)
+        notify("ok", "Connected (demo)")
+      }
+    } catch {
+      notify("err", "Couldn't connect Google Fit")
+    }
+  }
+
+  const handleSignOut = async () => {
+    try {
+      await signOut()
     } finally {
-      localStorage.clear()
-      navigate("/")
+      navigate("/auth?mode=signin")
     }
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900">
-      {/* Sidebar Component */}
-      <Sidebar />
+    <div className="space-y-6 animate-fade-in-up">
+      <SectionHeader
+        eyebrow="Account"
+        title="Your profile"
+        description="Manage your identity and data."
+        actions={
+          <button
+            onClick={handleSignOut}
+            className="hidden sm:inline-flex items-center gap-2 h-10 px-3 rounded-xl bg-secondary text-foreground font-semibold text-sm hover:bg-secondary/70"
+          >
+            <LogOut className="w-4 h-4" /> Sign out
+          </button>
+        }
+      />
 
-      {/* Main Content Area */}
-      <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? "ml-64" : "ml-20"} p-6 overflow-auto`}>
-        <div className="max-w-4xl mx-auto">
-          {/* Header with theme toggle */}
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Profile</h1>
-            <button
-              onClick={handleToggleTheme}
-              className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-colors"
-              aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-            >
-              {darkMode ? <FaSun className="h-5 w-5" /> : <FaMoon className="h-5 w-5" />}
-            </button>
+      {/* Header card — flat, primary accent avatar */}
+      <div className="rounded-2xl bg-card border border-border p-6 sm:p-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
+          <div className="w-16 h-16 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center text-2xl font-display font-bold shrink-0">
+            {user.name?.[0]?.toUpperCase() || <User className="w-7 h-7" />}
           </div>
-
-          {isLoading ? (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
-              <div className="flex justify-center items-center h-32">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* Profile Card */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6 border border-gray-200 dark:border-gray-700">
-                <div className="flex flex-col md:flex-row items-center md:items-start space-y-4 md:space-y-0 md:space-x-6">
-                  {/* Profile Picture */}
-                  <div className="relative">
-                    <div
-                      className="w-32 h-32 rounded-full overflow-hidden border-4 border-blue-600 dark:border-blue-500 cursor-pointer"
-                      onClick={handleProfilePictureClick}
-                    >
-                      <img
-                        src={user.profilePicture || "/placeholder.svg?height=200&width=200"}
-                        alt="Profile"
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 flex items-center justify-center transition-all duration-200">
-                        <FaCamera className="text-white opacity-0 hover:opacity-100 text-2xl" />
-                      </div>
-                    </div>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      className="hidden"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                    />
-                  </div>
-
-                  {/* Profile Info */}
-                  <div className="flex-1 text-center md:text-left">
-                    {isEditing ? (
-                      <form onSubmit={handleProfileUpdate} className="space-y-4">
-                        <div>
-                          <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Name
-                          </label>
-                          <input
-                            type="text"
-                            id="name"
-                            name="name"
-                            value={formData.name}
-                            onChange={handleInputChange}
-                            className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                            required
-                          />
-                        </div>
-                        <div className="flex space-x-4">
-                          <button
-                            type="submit"
-                            disabled={isLoading}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {isLoading ? "Saving..." : "Save Changes"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsEditing(false)
-                              setFormData({ name: user.name })
-                            }}
-                            className="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </form>
-                    ) : (
-                      <div className="space-y-4">
-                        <div>
-                          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{user.name}</h2>
-                          <p className="text-gray-600 dark:text-gray-400">{user.email}</p>
-                        </div>
-                        <button
-                          onClick={() => setIsEditing(true)}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                        >
-                          Edit Profile
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Download Health Data */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6 border border-gray-200 dark:border-gray-700">
-                <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">Download Your Health Data</h2>
-                <p className="text-gray-600 dark:text-gray-300 mb-6">
-                  You can download all your health data in various formats for your records or to share with healthcare
-                  providers. Your data is encrypted and secure.
-                </p>
-
-                <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3">
-                  <select
-                    value={downloadFormat}
-                    onChange={(e) => setDownloadFormat(e.target.value as "json" | "csv")}
-                    className="w-full sm:w-auto p-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="json">JSON Format</option>
-                    <option value="csv">CSV Format</option>
-                  </select>
-
-                  <button
-                    onClick={handleDownloadData}
-                    disabled={isDownloading}
-                    className="w-full sm:w-auto flex items-center justify-center px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:bg-blue-400 disabled:cursor-not-allowed"
-                  >
-                    {isDownloading ? (
-                      <>
-                        <svg
-                          className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          ></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
-                        </svg>
-                        Downloading...
-                      </>
-                    ) : (
-                      <>
-                        <FaDownload className="mr-2" />
-                        Download Data
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Action Section */}
-              <div className="flex space-x-4">
-                <button
-                  onClick={handleLogout}
-                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
-                >
-                  Logout
-                </button>
-                <button
-                  onClick={() => navigate("/settings")}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-                >
-                  Settings
-                </button>
-              </div>
-            </>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Signed in as</p>
+            <h1 className="mt-0.5 text-2xl sm:text-3xl font-display font-bold tracking-tight truncate">
+              {isLoading ? <Skeleton className="h-8 w-40" /> : user.name || "User"}
+            </h1>
+            <p className="text-muted-foreground text-sm truncate">{user.email}</p>
+          </div>
+          {!isEditing && (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors"
+            >
+              <Edit3 className="w-3.5 h-3.5" /> Edit
+            </button>
           )}
         </div>
-      </main>
+
+        {/* Quick stats */}
+        <div className="mt-6 grid grid-cols-3 gap-3 pt-6 border-t border-border">
+          {[
+            { Icon: Footprints, label: "Steps today", value: stats.steps.toLocaleString(), color: "text-metric-steps", bg: "bg-metric-steps/10" },
+            { Icon: Heart, label: "Heart rate", value: `${stats.heart}`, unit: "bpm", color: "text-metric-heart", bg: "bg-metric-heart/10" },
+            { Icon: Flame, label: "Calories", value: `${stats.calories}`, color: "text-metric-calories", bg: "bg-metric-calories/10" },
+          ].map(({ Icon, label, value, unit, color, bg }) => (
+            <div key={label} className="flex items-center gap-3">
+              <span className={`inline-flex items-center justify-center w-10 h-10 rounded-lg shrink-0 ${bg} ${color}`}>
+                <Icon className="w-4 h-4" />
+              </span>
+              <div className="min-w-0">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground truncate">{label}</div>
+                <div className="mt-0.5 font-display font-bold text-lg tabular-nums text-foreground">
+                  {isLoading ? <Skeleton className="h-5 w-16" /> : (
+                    <>{value}{unit && <span className="ml-1 text-xs font-normal text-muted-foreground">{unit}</span>}</>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Edit form + connections */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <ChartCard title="Personal info" subtitle="What we call you." className="lg:col-span-2">
+          <form onSubmit={handleSave} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Display name</label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  value={form.name}
+                  onChange={(e) => setForm({ name: e.target.value })}
+                  disabled={!isEditing}
+                  className="w-full h-11 pl-10 pr-3 rounded-xl bg-background border border-border text-sm outline-none focus:border-primary focus:shadow-ring disabled:opacity-70"
+                  placeholder="Your name"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Email</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  value={user.email}
+                  disabled
+                  className="w-full h-11 pl-10 pr-3 rounded-xl bg-secondary border border-border text-sm text-muted-foreground outline-none"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Contact support to change your email.</p>
+            </div>
+
+            {isEditing && (
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-sm shadow-soft disabled:opacity-70"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  {saving ? "Saving..." : "Save changes"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForm({ name: user.name })
+                    setIsEditing(false)
+                  }}
+                  className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-secondary text-foreground font-semibold text-sm hover:bg-secondary/70"
+                >
+                  <X className="w-3.5 h-3.5" /> Cancel
+                </button>
+              </div>
+            )}
+          </form>
+        </ChartCard>
+
+        <div className="space-y-4">
+          <div className="rounded-2xl bg-card border border-border/60 p-5 shadow-soft">
+            <div className="flex items-center gap-2 mb-1">
+              <Activity className="w-4 h-4 text-primary" />
+              <h3 className="font-display font-semibold">Google Fit</h3>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {googleFitConnected === null
+                ? "Checking status..."
+                : googleFitConnected
+                ? "Connected. Data syncs automatically."
+                : "Not connected. Connect to auto-sync your metrics."}
+            </p>
+            {!googleFitConnected && googleFitConnected !== null && (
+              <button
+                onClick={handleConnectFit}
+                className="mt-3 w-full h-10 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90"
+              >
+                Connect
+              </button>
+            )}
+            {googleFitConnected && (
+              <div className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-metric-active">
+                <ShieldCheck className="w-3.5 h-3.5" /> Active
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-2xl bg-card border border-border p-5 relative overflow-hidden">
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
+            <div className="flex items-center gap-2 mb-1">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <h3 className="font-display font-semibold">Streak</h3>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              You've been tracking for a while. Consistency is the whole game.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Export data */}
+      <ChartCard title="Export your data" subtitle="Take everything with you at any time.">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="flex items-center gap-1 rounded-xl bg-secondary p-1">
+            {(["csv", "json"] as const).map((fmt) => (
+              <button
+                key={fmt}
+                onClick={() => setDownloadFormat(fmt)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                  downloadFormat === fmt ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"
+                }`}
+              >
+                {fmt.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={handleDownload}
+            disabled={isDownloading}
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 h-11 px-4 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-sm shadow-soft disabled:opacity-70"
+          >
+            <Download className="w-4 h-4" />
+            {isDownloading ? "Preparing..." : `Download as ${downloadFormat.toUpperCase()}`}
+          </button>
+        </div>
+      </ChartCard>
+
+      {/* Danger zone */}
+      <ChartCard title="Danger zone" subtitle="Irreversible account changes.">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-destructive/10 text-destructive">
+              <Trash2 className="w-5 h-5" />
+            </span>
+            <div>
+              <p className="text-sm font-semibold">Delete account</p>
+              <p className="text-xs text-muted-foreground">Manage account deletion in Settings → Privacy.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate("/settings")}
+            className="inline-flex items-center gap-2 h-10 px-3 rounded-xl bg-secondary text-foreground font-semibold text-sm hover:bg-secondary/70"
+          >
+            Manage
+          </button>
+        </div>
+      </ChartCard>
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm animate-fade-in-up">
+          <div
+            className={`flex items-center gap-2 rounded-xl px-4 py-3 shadow-pop border ${
+              toast.tone === "ok"
+                ? "bg-metric-active/15 border-metric-active/30 text-metric-active"
+                : "bg-destructive/10 border-destructive/30 text-destructive"
+            }`}
+          >
+            {toast.tone === "ok" ? <CheckCircle2 className="w-4 h-4" /> : <X className="w-4 h-4" />}
+            <span className="text-sm font-medium">{toast.text}</span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
-
